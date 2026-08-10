@@ -96,10 +96,6 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
           <h1 className="intro-name" ref={nameRef}>
             {ARTIST_NAME}
           </h1>
-          <p className="intro-tagline" ref={taglineRef}>
-            {INTRO_TAGLINE}
-          </p>
-          <hr className="intro-divider" ref={dividerRef} aria-hidden="true" />
           <button
             type="button"
             className="cta"
