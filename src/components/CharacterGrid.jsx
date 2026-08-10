@@ -21,10 +21,16 @@ function seeded(id, salt) {
 // automatically at every card size/breakpoint instead of needing a
 // separate tuned number per media query.
 function scatterStyle(id) {
-  const rot = (seeded(id, 1) - 0.5) * 34; // -17deg .. 17deg
-  const yf = (seeded(id, 2) - 0.5) * 1.1; // -0.55 .. 0.55 of card height
-  const xf = (seeded(id, 3) - 0.5) * 0.9; // -0.45 .. 0.45 of card width
-  const scale = 0.82 + seeded(id, 4) * 0.4; // 0.82 .. 1.22
+  // Kept large enough to read as hand-scattered, but pulled back from an
+  // earlier version that let cards overlap so much their tap targets
+  // became ambiguous (visually on top of card A, but actually hit-testing
+  // to card B underneath) — which was part of what caused "harus dipencet
+  // 2x" (needing two presses: the first press was landing on the wrong,
+  // hidden card).
+  const rot = (seeded(id, 1) - 0.5) * 22; // -11deg .. 11deg
+  const yf = (seeded(id, 2) - 0.5) * 0.56; // -0.28 .. 0.28 of card height
+  const xf = (seeded(id, 3) - 0.5) * 0.44; // -0.22 .. 0.22 of card width
+  const scale = 0.9 + seeded(id, 4) * 0.22; // 0.9 .. 1.12
   return {
     '--rot': `${rot.toFixed(2)}deg`,
     '--yf': yf.toFixed(3),

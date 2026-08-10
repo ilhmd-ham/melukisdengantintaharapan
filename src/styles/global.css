@@ -175,10 +175,12 @@ body.scroll-locked {
   -webkit-transform-style: preserve-3d;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  will-change: transform;
-  /* A single, snappier easing for the flip itself, plus a shorter one for
-     the hover lift so the card feels immediately responsive to a tap
-     instead of sluggish. */
+  /* NOTE: deliberately no `will-change: transform` here. Combined with
+     backface-visibility:hidden on the two child faces, will-change can
+     make some Chromium/Android builds promote this element to its own
+     compositing layer in a way that stops correctly hiding the
+     back-facing child — the visible symptom was the front face's icon
+     still showing, mirrored, instead of the back face with the name. */
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
   border-radius: 3px;
   z-index: 1;
@@ -234,14 +236,12 @@ body.scroll-locked {
   border-radius: 3px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  /* Prevents WebKit's z-fighting flicker mid-flip, where the hidden back
-     face can briefly "win" the paint order at the 90deg midpoint. */
-  transform: translateZ(0);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(244, 239, 230, 0.06);
 }
 
 .card-front {
   font-family: var(--font-mono);
+  transform: rotateY(0deg);
 }
 
 .card-symbol {
@@ -544,13 +544,17 @@ body.scroll-locked {
 
 @media (max-width: 480px) {
   :root {
-    --card-w: 48px;
-    --card-h: 64px;
+    /* 4 columns instead of 5 — 36 characters ÷ 5 leaves 1 card orphaned
+       alone on its own last row; ÷ 4 divides evenly into exactly 9 full
+       rows, so every row (including the last) is full. Cards sized up
+       slightly to use the freed-up width. */
+    --card-w: 58px;
+    --card-h: 78px;
     --gap: 6px;
   }
 
   .card-grid {
-    grid-template-columns: repeat(5, var(--card-w));
+    grid-template-columns: repeat(4, var(--card-w));
   }
 
   .card-symbol {
