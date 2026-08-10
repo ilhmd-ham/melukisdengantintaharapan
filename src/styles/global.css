@@ -111,20 +111,34 @@ body.scroll-locked {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8vh 4vw;
+  /* Extra padding vs. before — the much larger per-card scatter offsets
+     (see .card-slot) need more buffer so rotated/shifted edge cards don't
+     get clipped by .intro's overflow:hidden. */
+  padding: 11vh 7vw;
 }
 
 .card-grid {
   display: grid;
   grid-template-columns: repeat(9, var(--card-w));
   grid-auto-rows: var(--card-h);
-  gap: var(--gap);
+  /* Extra row/column gap gives the large per-card offsets (see
+     CharacterGrid.jsx) room to overlap neighboring cells without spilling
+     past the wall's own padding — part of the "berantakan" (chaotic wall)
+     look, not just spacing. */
+  gap: calc(var(--gap) * 2.6);
   perspective: 1400px;
   -webkit-perspective: 1400px;
 }
 
 .card-slot {
-  transform: translate(var(--x, 0), var(--y, 0)) rotate(var(--rot, 0deg)) scale(var(--scale, 1));
+  /* Each card is nudged by a large, per-card fraction of its own size
+     (--xf/--yf, set in CharacterGrid.jsx) on top of its strict grid cell —
+     the grid cell is what keeps card 01 near the top-left and card 36 near
+     the bottom-right at every breakpoint (that's just source order), while
+     this offset is what makes the wall look hand-scattered/chaotic up
+     close instead of a neat grid. */
+  transform: translate(calc(var(--xf, 0) * var(--card-w)), calc(var(--yf, 0) * var(--card-h))) rotate(var(--rot, 0deg))
+    scale(var(--scale, 1));
   /* Needed so the perspective set on .card-grid actually reaches .card
      (a great-grandchild). Without preserve-3d on every element in that
      chain, each transformed ancestor flattens its descendants into 2D,
@@ -207,25 +221,6 @@ body.scroll-locked {
 .card.is-flipped:focus-visible {
   transform: translateY(-4px) scale(1.05) rotateY(180deg);
   z-index: 3;
-}
-
-/* Little "pop" the instant a card opens, layered on top of the flip, so
-   opening reads as an unmistakable, smooth action rather than a static
-   jump-cut. Re-triggered on every open via a class swap in React. */
-@keyframes card-pop {
-  0% {
-    filter: brightness(1);
-  }
-  35% {
-    filter: brightness(1.25);
-  }
-  100% {
-    filter: brightness(1);
-  }
-}
-
-.card.is-opening .card-back {
-  animation: card-pop 0.5s ease-out;
 }
 
 .card-face {
@@ -525,19 +520,25 @@ body.scroll-locked {
   }
 
   .card-slot {
-    /* keep touch layout calm: scatter still applies but is subtler */
-    transform: translate(calc(var(--x, 0) * 0.4), calc(var(--y, 0) * 0.4)) rotate(calc(var(--rot, 0deg) * 0.5))
-      scale(var(--scale, 1));
+    /* Fractions already scale with --card-w/--card-h, which shrink in this
+       breakpoint on their own — so the same amount of "berantakan" chaos
+       carries over to mobile automatically without needing a separate
+       dampened formula here. Rotation is trimmed slightly only because
+       tightly packed, heavily rotated small cards can start to feel more
+       cluttered than intentional on a narrow screen. */
+    transform: translate(calc(var(--xf, 0) * var(--card-w)), calc(var(--yf, 0) * var(--card-h)))
+      rotate(calc(var(--rot, 0deg) * 0.75)) scale(var(--scale, 1));
   }
 
   .intro-wall {
-    padding: 4vh 3vw 22vh;
+    padding: 6vh 5vw 22vh;
     align-items: flex-start;
   }
 
   .intro-copy {
-    justify-content: flex-end;
-    padding-bottom: 6vh;
+    /* Was pinned to the bottom on mobile (flex-end + bottom padding) —
+       centered now, same as desktop, at every screen size. */
+    justify-content: center;
   }
 }
 

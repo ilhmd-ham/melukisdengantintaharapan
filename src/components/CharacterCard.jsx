@@ -21,29 +21,23 @@ const MARKS = [
 ];
 
 export default function CharacterCard({ character, style }) {
-  // Flip state is driven ONLY by click/tap/keyboard (`pinned`). Earlier this
-  // also flipped on mouse hover, which caused two bugs on desktop: (1) the
-  // card would already be open by the time the click landed, so the click
-  // appeared to do nothing, and (2) clicking again while the cursor was
-  // still over the card couldn't close it, since hover kept forcing it
-  // open. Using a single source of truth makes every click/tap register
-  // immediately and predictably, on every device.
+  // Flip state is driven ONLY by click/tap/keyboard, through a single,
+  // plain toggle — no secondary state, no nested setState calls, no
+  // requestAnimationFrame bookkeeping. An earlier version layered a
+  // "pop flash" animation on top of this (a second `justOpened` state set
+  // from inside the `setPinned` updater, cleared via onAnimationEnd), and
+  // that's what caused the reported bug where pressing a card didn't flip
+  // it until the cursor moved away or another card was clicked: nesting a
+  // second component's setState call inside the first one's functional
+  // updater made the resulting re-render land a tick late, so the visual
+  // flip only caught up once some later, unrelated event (mouseleave,
+  // another click) forced the next re-render. Keeping this to one state
+  // variable means the class change — and the CSS transition that plays
+  // it — always commits in the exact same render as the click.
   const [pinned, setPinned] = useState(false);
-  const [justOpened, setJustOpened] = useState(false);
-  const flipped = pinned;
   const { id, symbol, name, mark, palette } = character;
 
-  const togglePinned = () => {
-    setPinned((p) => {
-      const next = !p;
-      if (next) {
-        // Retriggers the "pop" micro-animation class each time a card opens.
-        setJustOpened(false);
-        requestAnimationFrame(() => setJustOpened(true));
-      }
-      return next;
-    });
-  };
+  const togglePinned = () => setPinned((p) => !p);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -61,10 +55,9 @@ export default function CharacterCard({ character, style }) {
       <span className="card-anim">
         <button
           type="button"
-          className={`card ${flipped ? 'is-flipped' : ''} ${flipped && justOpened ? 'is-opening' : ''}`}
+          className={`card ${pinned ? 'is-flipped' : ''}`}
           onClick={togglePinned}
           onKeyDown={handleKeyDown}
-          onAnimationEnd={() => setJustOpened(false)}
           aria-pressed={pinned}
           aria-label={`Kartu ${symbol}, ${name}. ${pinned ? 'Tekan untuk kembali ke sisi depan' : 'Tekan untuk melihat nama'}`}
         >
