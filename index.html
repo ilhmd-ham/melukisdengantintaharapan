@@ -1,1 +1,110 @@
-blm jdi
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#17140F" />
+    <title>Melukis dengan Tinta Harapan - XII RPL C</title>
+    <meta name="description" content="An interactive mural portfolio — walls that remember." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=Poppins:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+    /* ================================
+      DISABLE TEXT SELECTION
+      ================================ */
+
+    *,
+    *::before,
+    *::after {
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+
+    /* ================================
+      PREVENT IMAGE DRAGGING
+      ================================ */
+
+    img {
+      -webkit-user-drag: none;
+      user-drag: none;
+      pointer-events: auto;
+    }
+
+    /* ================================
+      PREVENT TEXT CURSOR
+      ================================ */
+
+    body {
+      -webkit-touch-callout: none;
+    }
+
+    /* Jika ada input/form yang memang harus diketik */
+    input,
+    textarea,
+    [contenteditable="true"] {
+      user-select: text;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+    }
+  </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!--
+      Belt-and-braces layer that runs BEFORE React mounts, so right-click /
+      drag / selection are blocked from the very first paint instead of
+      only once the app's JS has hydrated. The React-level protection in
+      App.jsx (useDisableCopyingAndContextMenu) does the same job for
+      anything rendered after this point — the two overlap on purpose.
+
+      Reminder: this only deters casual copying (right-click "save image",
+      drag-to-desktop, Ctrl+C). Anyone using DevTools or view-source can
+      still read every byte of this page — don't treat this as real
+      content protection.
+    -->
+    <script>
+      (function () {
+        function isEditable(target) {
+          return target && target.closest && target.closest('input, textarea, [contenteditable="true"], [contenteditable=""]');
+        }
+
+        function blockUnlessEditable(e) {
+          if (isEditable(e.target)) return;
+          e.preventDefault();
+        }
+
+        document.addEventListener('contextmenu', blockUnlessEditable);
+        document.addEventListener('dragstart', blockUnlessEditable);
+        document.addEventListener('selectstart', blockUnlessEditable);
+        document.addEventListener('copy', blockUnlessEditable);
+        document.addEventListener('cut', blockUnlessEditable);
+
+        // Deters (does not truly block) the common "view source / open
+        // devtools / save page" keyboard shortcuts. Purely a speed bump —
+        // every browser exposes other ways to open DevTools regardless.
+        document.addEventListener('keydown', function (e) {
+          if (isEditable(e.target)) return;
+          var key = e.key ? e.key.toLowerCase() : '';
+          const blockedCombo =
+            key === 'f12' ||
+            (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(key)) ||
+            (e.metaKey && e.altKey && ['i', 'j', 'c'].includes(key)) || // Safari
+            ((e.ctrlKey || e.metaKey) && key === 'u') || // view-source
+            ((e.ctrlKey || e.metaKey) && key === 's'); // save page
+          if (blockedCombo) e.preventDefault();
+        });
+      })();
+    </script>
+
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

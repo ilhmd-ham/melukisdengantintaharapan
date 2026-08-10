@@ -39,7 +39,8 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
   // Split on spaces so each word gets its own overflow-hidden "mask" span —
   // that's what lets the word slide up from underneath its own box rather
   // than just fading, the effect this is modelled on (grigoriak.doctor's
-  // "Your Beauty" headline).
+  // "Your Beauty" headline). Reused below for the slogan under the image
+  // too, so both texts rise the same way.
   const heroTitleWords = INTRO_TAGLINE.split(' ');
 
   return (
@@ -79,14 +80,24 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
       </div>
 
       {/* 2b. The original multi-line slogan now lives here, as a caption
-          right under the artwork. */}
+          right under the artwork. Same word-mask-and-rise treatment as the
+          hero title above the image (each word in its own overflow-hidden
+          box), just smaller and per-line instead of one flex-wrapped
+          block — see .mural-image-caption-word in muralAnimations.js. */}
       <div className="mural-image-caption" ref={imageCaptionRef}>
         {sloganLines.map((line, i) => (
           <span className="mural-image-caption-line" key={i}>
-            {line}
+            {line.split(' ').map((word, j) => (
+              <span className="mural-image-caption-word-mask" key={j}>
+                <span className="mural-image-caption-word">{word}</span>
+              </span>
+            ))}
           </span>
         ))}
       </div>
+
+      {/* Divider between the slogan and the description below it. */}
+      <hr className="mural-divider" />
 
       {/* 3. Description below the caption. Split into one <p> per paragraph
           (rather than a single block with raw \n's, which the browser
@@ -100,6 +111,21 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
             {paragraph}
           </p>
         ))}
+      </div>
+
+      {/* Closing mark — a short "end of chapter" flourish under the
+          description, echoing the "TAMAT" divider at the end of a novel. */}
+      <div className="mural-end-mark" aria-hidden="true">
+        <span className="mural-end-mark-line" />
+        <span className="mural-end-mark-ornament">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path
+              d="M12 1 L14.5 9.5 L23 12 L14.5 14.5 L12 23 L9.5 14.5 L1 12 L9.5 9.5 Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+        <span className="mural-end-mark-line" />
       </div>
     </section>
   );

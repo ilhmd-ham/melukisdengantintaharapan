@@ -1,20 +1,25 @@
 // 36 character cards shown on the intro wall.
-// Edit the NAMES list below to change what appears on the back of each
-// card when it's flipped — line 1 is card 01, line 2 is card 02, and so
-// on. `mark` controls which abstract glyph is drawn on the card back (see
-// CharacterCard.jsx for the shape set). `palette` picks a color pairing
-// from PALETTES below — change the index (0–4) to restyle a card without
-// touching colors directly.
+// Edit the NAMES list below to change the name printed on each card —
+// line 1 is card 01, line 2 is card 02, and so on. `palette` picks a
+// color pairing from PALETTES below — change the index (0–4) to restyle
+// a card without touching colors directly.
+//
+// All cards share the same dark fill (close to the page background) so
+// nothing reads as bright/colorful against it — each palette is told
+// apart only by its `outline` color (the card's border) and a matching
+// tint on the card number, never by the fill itself.
 
+// All five entries now share one outline color (a dark, slightly warm
+// gray) instead of five distinct hues — cards are told apart by their
+// number/name only, not by border color. The array stays five entries
+// deep so nothing else that reads `palette` by index needs to change.
 export const PALETTES = [
-  { front: '#1B1712', back: '#3550C9', ink: '#F4EFE6' }, // ultramarine
-  { front: '#1B1712', back: '#D99A3D', ink: '#1B1712' }, // ochre
-  { front: '#1B1712', back: '#B24D3E', ink: '#F4EFE6' }, // clay
-  { front: '#1B1712', back: '#6E7B63', ink: '#F4EFE6' }, // moss
-  { front: '#1B1712', back: '#F4EFE6', ink: '#1B1712' }, // plaster
+  { back: '#1D1912', outline: '#4A463D', ink: '#EDE7DA' },
+  { back: '#1D1912', outline: '#4A463D', ink: '#EDE7DA' },
+  { back: '#1D1912', outline: '#4A463D', ink: '#EDE7DA' },
+  { back: '#1D1912', outline: '#4A463D', ink: '#EDE7DA' },
+  { back: '#1D1912', outline: '#4A463D', ink: '#EDE7DA' },
 ];
-
-const MARK_COUNT = 6; // number of abstract glyph variants in CharacterCard.jsx
 
 // The editable name list — one entry per card, in order. Replace each
 // placeholder with a real name; leaving fewer than 36 entries is fine,
@@ -38,7 +43,6 @@ export const characters = Array.from({ length: 36 }, (_, i) => {
     id,
     symbol: pad(id),
     name: NAMES[i] ?? `Nama ${id}`,
-    mark: id % MARK_COUNT,
     palette: PALETTES[id % PALETTES.length],
   };
 });

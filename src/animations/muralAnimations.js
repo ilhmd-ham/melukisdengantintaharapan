@@ -39,11 +39,18 @@ export function setupMuralScroll({
   const triggers = [];
   const isMobile = window.matchMedia('(max-width: 900px)').matches;
   const heroWords = heroTitleEl ? heroTitleEl.querySelectorAll('.mural-hero-title-word') : [];
+  // Slogan under the image now rises word-by-word out of masked boxes too
+  // (see MuralSection.jsx + .mural-image-caption-word-mask CSS), same
+  // technique as heroWords above — just its own querySelectorAll since it
+  // lives in a different element.
+  const captionWords = imageCaptionEl
+    ? imageCaptionEl.querySelectorAll('.mural-image-caption-word')
+    : [];
 
   if (reduced) {
     gsap.set(imageWrapEl, { opacity: 1, y: '0%', clipPath: 'inset(0% 0% 0% 0%)' });
-    gsap.set([imageCaptionEl, descriptionEl], { opacity: 1, y: 0 });
-    gsap.set(heroWords, { yPercent: 0, opacity: 1 });
+    gsap.set(descriptionEl, { opacity: 1, y: 0 });
+    gsap.set([heroWords, captionWords], { yPercent: 0, opacity: 1 });
     return triggers;
   }
 
@@ -88,8 +95,7 @@ export function setupMuralScroll({
   // spot. clip-path itself is set above via applyClip().
   gsap.set(imageWrapEl, { opacity: 0, y: startY });
   gsap.set(imageEl, { scale: 1.12 });
-  gsap.set(heroWords, { yPercent: 120, opacity: 0 });
-  gsap.set(imageCaptionEl, { opacity: 0, y: 40 });
+  gsap.set([heroWords, captionWords], { yPercent: 120, opacity: 0 });
   gsap.set(descriptionEl, { opacity: 0, y: 40 });
 
   // Reveal is now split into two INDEPENDENT pieces instead of one combined
@@ -199,17 +205,26 @@ export function setupMuralScroll({
   triggers.push(descTrigger);
 
   // Caption entrance (the multi-line slogan, now living under the image):
-  // intentionally slow and heavy (long duration, a deceleration-only ease
-  // with no snap at the end) rather than a quick fade — the text should
-  // feel like it's settling into place under its own weight, not popping
-  // in. Free scroll is never blocked while this plays.
-  const captionTrigger = ScrollTrigger.create({
-    trigger: imageCaptionEl,
-    start: 'top 90%',
-    onEnter: () => gsap.to(imageCaptionEl, { opacity: 1, y: 0, duration: 2.4, ease: 'power4.out' }),
-    onLeaveBack: () => gsap.to(imageCaptionEl, { opacity: 0, y: 40, duration: 0.8, ease: 'power2.in' }),
-  });
-  triggers.push(captionTrigger);
+  // same word-mask rise as the hero title above the image, just smaller —
+  // each word slides up out of its own overflow-hidden box rather than
+  // the block fading in as a whole. Slightly slower/heavier than the hero
+  // (duration 2.6 vs 2.2, stagger 0.2 vs 0.16) so it still reads as the
+  // quieter, "settling into place" echo of the big headline above.
+  if (captionWords.length) {
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: imageCaptionEl,
+        start: 'top 90%',
+        toggleActions: 'play reverse play reverse',
+      },
+    }).to(captionWords, {
+      yPercent: 0,
+      opacity: 1,
+      duration: 2.6,
+      ease: 'power3.out',
+      stagger: 0.2,
+    });
+  }
 
   // Hero title: each word lives inside its own overflow-hidden mask span
   // (see MuralSection.jsx + the .mural-hero-title-mask CSS), so animating

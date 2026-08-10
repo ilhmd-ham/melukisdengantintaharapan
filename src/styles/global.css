@@ -14,6 +14,7 @@
   --font-display: 'Fraunces', 'Iowan Old Style', serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-poppins: 'Poppins', system-ui, sans-serif;
 
   --card-w: 76px;
   --card-h: 100px;
@@ -108,44 +109,31 @@ body.scroll-locked {
 .intro-wall {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Extra padding vs. before — the much larger per-card scatter offsets
-     (see .card-slot) need more buffer so rotated/shifted edge cards don't
-     get clipped by .intro's overflow:hidden. */
-  padding: 11vh 7vw;
 }
 
 .card-grid {
-  display: grid;
-  grid-template-columns: repeat(9, var(--card-w));
-  grid-auto-rows: var(--card-h);
-  /* Extra row/column gap gives the large per-card offsets (see
-     CharacterGrid.jsx) room to overlap neighboring cells without spilling
-     past the wall's own padding — part of the "berantakan" (chaotic wall)
-     look, not just spacing. */
-  gap: calc(var(--gap) * 2.6);
+  position: absolute;
+  inset: 0;
   perspective: 1400px;
   -webkit-perspective: 1400px;
 }
 
+/* A plain, never-transformed anchor at the exact center of the stage.
+   Every card starts here; .card-anim (below) is what GSAP moves outward
+   into the shuffle/grid/circle/orbit positions — see
+   animations/introAnimations.js. Kept transform-free on purpose so it can
+   still be a useful, predictable target for the later "wall opens"
+   fly-away transition (a clean additive offset on top of wherever the
+   card currently sits on the ring, rather than two systems fighting over
+   the same x/y). */
 .card-slot {
-  /* Each card is nudged by a large, per-card fraction of its own size
-     (--xf/--yf, set in CharacterGrid.jsx) on top of its strict grid cell —
-     the grid cell is what keeps card 01 near the top-left and card 36 near
-     the bottom-right at every breakpoint (that's just source order), while
-     this offset is what makes the wall look hand-scattered/chaotic up
-     close instead of a neat grid. */
-  transform: translate(calc(var(--xf, 0) * var(--card-w)), calc(var(--yf, 0) * var(--card-h))) rotate(var(--rot, 0deg))
-    scale(var(--scale, 1));
-  /* Needed so the perspective set on .card-grid actually reaches .card
-     (a great-grandchild). Without preserve-3d on every element in that
-     chain, each transformed ancestor flattens its descendants into 2D,
-     which is why the flip previously looked like an instant, flat swap
-     instead of a proper 3D turn. The -webkit- prefix is required for the
-     same reason on iOS/Android WebKit — without it, mobile browsers ignore
-     preserve-3d entirely and the "flip" collapses into an instant swap. */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--card-w);
+  height: var(--card-h);
+  margin-top: calc(var(--card-h) / -2);
+  margin-left: calc(var(--card-w) / -2);
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
@@ -157,121 +145,78 @@ body.scroll-locked {
   display: block;
   width: var(--card-w);
   height: var(--card-h);
+  opacity: 0;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
   perspective: 1400px;
   -webkit-perspective: 1400px;
 }
 
+/* Flip is disabled — this is now a plain, static face: number + name
+   only, no icon. Cards are told apart purely by border color (outline),
+   never by the fill, which stays the same dark tone on every card so
+   none of them read as bright/colorful against the dark background. */
 .card {
   width: 100%;
   height: 100%;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  position: relative;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  /* NOTE: deliberately no `will-change: transform` here. Combined with
-     backface-visibility:hidden on the two child faces, will-change can
-     make some Chromium/Android builds promote this element to its own
-     compositing layer in a way that stops correctly hiding the
-     back-facing child — the visible symptom was the front face's icon
-     still showing, mirrored, instead of the back face with the name. */
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
-  border-radius: 3px;
-  z-index: 1;
-}
-
-/* Hover now only lifts the card slightly — it no longer flips it. Flipping
-   is driven exclusively by click/tap (`.is-flipped`), so what the user sees
-   on click always changes, and closing it again always works too.
-
-   IMPORTANT: every state below uses the exact same transform function
-   list — translateY() scale() rotateY() — in the same order, just with
-   different values (rotateY(0deg) when not flipped). Browsers can only
-   smoothly interpolate a transform transition when both the start and
-   end value use matching functions; mixing rotate()/translateY()/scale()
-   on hover with a bare rotateY() on flip (the previous setup) forced a
-   fallback matrix interpolation that on many mobile browsers just snaps
-   instead of animating — which is what read as "blinking" instead of a
-   card turning over. */
-.card {
-  transform: translateY(0) scale(1) rotateY(0deg);
-}
-
-.card:hover,
-.card:focus-visible {
-  transform: translateY(-4px) scale(1.05) rotateY(0deg);
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
-  z-index: 3;
-}
-
-.card:active {
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
-}
-
-.card.is-flipped {
-  transform: translateY(0) scale(1) rotateY(180deg);
-  z-index: 2;
-}
-
-.card.is-flipped:hover,
-.card.is-flipped:focus-visible {
-  transform: translateY(-4px) scale(1.05) rotateY(180deg);
-  z-index: 3;
-}
-
-.card-face {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  padding: 8px;
+  text-align: center;
+  border: 3px solid var(--card-outline);
   border-radius: 3px;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(244, 239, 230, 0.06);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, filter 0.3s ease;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  /* Individually clickable — see CardModal — to view one enlarged and
+     centered on screen. */
+  cursor: pointer;
 }
 
-.card-front {
-  font-family: var(--font-mono);
-  transform: rotateY(0deg);
+/* Outline glow that fades from the (now thicker) border inward toward the
+   card's center, giving the border more depth instead of a flat hairline.
+   Painted before the symbol/name in source order, so it sits behind the
+   text automatically without needing an explicit z-index. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 30%, var(--card-outline) 130%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.05);
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--ochre);
+  outline-offset: 3px;
 }
 
 .card-symbol {
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-.card-glyph {
-  width: 34px;
-  height: 34px;
-}
-
-.card-back {
-  transform: rotateY(180deg);
-  padding: 8px;
-  text-align: center;
-}
-
-.card-back-number {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  opacity: 0.65;
-}
-
-.card-back-name {
+.card-name-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.82rem;
   line-height: 1.15;
-  margin-top: 2px;
 }
 
 .intro-copy {
@@ -316,6 +261,18 @@ body.scroll-locked {
   color: var(--ink-muted);
   margin: 18px 0 0;
   max-width: 34ch;
+}
+
+/* Divider under the tagline, before the CTA button — wider than
+   .mural-divider further down since it has a full button below it to
+   visually balance, rather than a paragraph of body text. */
+.intro-divider {
+  width: 120px;
+  height: 1px;
+  margin: 28px auto 0;
+  border: none;
+  background: linear-gradient(90deg, transparent, var(--ink-muted), transparent);
+  opacity: 0.6;
 }
 
 .cta {
@@ -460,7 +417,10 @@ body.scroll-locked {
 
 /* Image caption — the original multi-line slogan, now sitting right under
    the artwork as a smaller, quieter block instead of the full-screen
-   headline. */
+   headline. Font size bumped up (was clamp 1.1–1.6rem) and each word now
+   rises out of its own overflow-hidden mask, same technique as
+   .mural-hero-title above — see .mural-image-caption-word(-mask) below and
+   the matching animation in muralAnimations.js. */
 .mural-image-caption {
   position: relative;
   z-index: 3;
@@ -469,16 +429,67 @@ body.scroll-locked {
   font-family: var(--font-display);
   font-weight: 400;
   font-style: italic;
-  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
-  line-height: 1.5;
-  max-width: 36ch;
+  font-size: clamp(1.4rem, 3.4vw, 2.1rem);
+  line-height: 1.4;
+  max-width: 40ch;
   margin-left: auto;
   margin-right: auto;
   color: #ffffff;
 }
 
 .mural-image-caption-line {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.05em 0.32em;
+}
+
+.mural-image-caption-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+}
+
+.mural-image-caption-word {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* Divider under the slogan, before the description — a plain <hr> visually
+   reworked into a short, quiet rule rather than the browser default. */
+.mural-divider {
+  width: 220px;
+  height: 2px;
+  margin: 5vh auto 0;
+  border: none;
+  background: linear-gradient(90deg, transparent, var(--ink-muted), transparent);
+  opacity: 0.6;
+}
+
+/* Closing mark under the description — a short line on either side of a
+   small diamond ornament, the same idea as "TAMAT" at the end of a novel
+   chapter, just told visually instead of in words. */
+.mural-end-mark {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 7vh auto 0;
+  color: #9a9a9a;
+}
+
+.mural-end-mark-line {
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.mural-end-mark-ornament {
+  display: flex;
+  opacity: 0.85;
 }
 
 /* Description now lives below the full-size image, as its own centered
@@ -492,6 +503,7 @@ body.scroll-locked {
   margin: 6vh auto 0;
   max-width: 680px;
   text-align: center;
+  font-family: var(--font-poppins);
   font-size: clamp(1rem, 1.4vw, 1.15rem);
   line-height: 1.75;
   color: #ffffff;
@@ -515,26 +527,6 @@ body.scroll-locked {
     --gap: 7px;
   }
 
-  .card-grid {
-    grid-template-columns: repeat(6, var(--card-w));
-  }
-
-  .card-slot {
-    /* Fractions already scale with --card-w/--card-h, which shrink in this
-       breakpoint on their own — so the same amount of "berantakan" chaos
-       carries over to mobile automatically without needing a separate
-       dampened formula here. Rotation is trimmed slightly only because
-       tightly packed, heavily rotated small cards can start to feel more
-       cluttered than intentional on a narrow screen. */
-    transform: translate(calc(var(--xf, 0) * var(--card-w)), calc(var(--yf, 0) * var(--card-h)))
-      rotate(calc(var(--rot, 0deg) * 0.75)) scale(var(--scale, 1));
-  }
-
-  .intro-wall {
-    padding: 6vh 5vw 22vh;
-    align-items: flex-start;
-  }
-
   .intro-copy {
     /* Was pinned to the bottom on mobile (flex-end + bottom padding) —
        centered now, same as desktop, at every screen size. */
@@ -544,30 +536,18 @@ body.scroll-locked {
 
 @media (max-width: 480px) {
   :root {
-    /* 4 columns instead of 5 — 36 characters ÷ 5 leaves 1 card orphaned
-       alone on its own last row; ÷ 4 divides evenly into exactly 9 full
-       rows, so every row (including the last) is full. Cards sized up
-       slightly to use the freed-up width. */
     --card-w: 58px;
     --card-h: 78px;
     --gap: 6px;
-  }
-
-  .card-grid {
-    grid-template-columns: repeat(4, var(--card-w));
   }
 
   .card-symbol {
     font-size: 0.58rem;
   }
 
-  .card-glyph {
-    width: 24px;
-    height: 24px;
-  }
-
-  .card-back-name {
-    font-size: 0.62rem;
+  .card-name-mark {
+    min-height: 24px;
+    font-size: 0.66rem;
   }
 }
 
@@ -603,7 +583,17 @@ body.scroll-locked {
   .mural-image-caption {
     margin-top: 4vh;
     padding: 0 4vw;
-    font-size: clamp(1rem, 4vw, 1.3rem);
+    font-size: clamp(1.2rem, 5.4vw, 1.7rem);
+  }
+
+  .mural-divider {
+    width: 55vw;
+    margin-top: 4vh;
+  }
+
+  .intro-divider {
+    width: 90px;
+    margin-top: 22px;
   }
 
   .mural-description {
@@ -611,6 +601,10 @@ body.scroll-locked {
        motion never visually runs into the text below it. */
     margin-top: 6vh;
     padding: 0 2vw;
+  }
+
+  .mural-end-mark {
+    margin-top: 5vh;
   }
 
 }
@@ -661,6 +655,122 @@ body.scroll-locked {
 }
 
 /* ============================================================
+   CARD MODAL (enlarged single-card view)
+   Rendered via a React portal straight onto <body> — see CardModal.jsx —
+   so it always sits above the intro wall's cards, text and scroll-progress
+   bar regardless of any stacking context those set up.
+   ============================================================ */
+.card-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 5, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: card-modal-fade-in 0.25s ease both;
+  cursor: pointer;
+}
+
+@keyframes card-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.card-modal-card {
+  width: min(58vw, 340px);
+  aspect-ratio: 76 / 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+  border: 4px solid var(--card-outline);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  cursor: default;
+  animation: card-modal-pop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.card-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 30%, var(--card-outline) 130%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+@keyframes card-modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.card-modal-symbol {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+  letter-spacing: 0.14em;
+  opacity: 0.7;
+}
+
+.card-modal-name {
+  position: relative;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  line-height: 1.15;
+}
+
+.card-modal-close {
+  position: fixed;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
+  z-index: 201;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(244, 239, 230, 0.35);
+  border-radius: 50%;
+  background: rgba(23, 20, 15, 0.6);
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.card-modal-close:hover {
+  background: rgba(23, 20, 15, 0.9);
+  transform: scale(1.08);
+}
+
+@media (max-width: 640px) {
+  .card-modal-card {
+    width: min(70vw, 300px);
+  }
+}
+
+/* ============================================================
    REDUCED MOTION
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
@@ -668,10 +778,6 @@ body.scroll-locked {
   .cta,
   .cta-arrow {
     transition: none !important;
-  }
-
-  .card-slot {
-    transform: none !important;
   }
 
   .mural-image-wrap {
@@ -686,6 +792,11 @@ body.scroll-locked {
   }
 
   .scroll-progress-bar {
+    animation: none !important;
+  }
+
+  .card-modal-overlay,
+  .card-modal-card {
     animation: none !important;
   }
 
