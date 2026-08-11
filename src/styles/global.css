@@ -138,6 +138,16 @@ body.scroll-locked {
   -webkit-transform-style: preserve-3d;
 }
 
+/* Hides the real orbiting card while its enlarged view is open in
+   CardModal, so the two don't render on top of each other. visibility
+   (not opacity/display) is deliberate: the element stays fully laid out
+   and geometrically measurable — CardModal.getLiveOrigin() reads its live
+   position via getBoundingClientRect() the instant the modal starts
+   closing, which requires accurate geometry the whole time it's hidden. */
+.card-slot.is-lifted {
+  visibility: hidden;
+}
+
 /* Purely an entrance-animation target (opacity/scale/y from GSAP) — kept
    separate from .card-slot's positioning transform and .card's flip
    transform so none of the three fight each other. */
@@ -232,17 +242,31 @@ body.scroll-locked {
   pointer-events: none;
 }
 
-.intro-copy > * {
+.intro-copy * {
   pointer-events: auto;
 }
 
-.intro-eyebrow {
+/* Hidden on desktop — the year/batch label only appears on mobile, pinned
+   to the top of the screen above the ring (see the mobile media query
+   below). Desktop keeps the name centered as a single block. */
+.intro-year {
+  display: none;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ochre);
-  margin: 0 0 18px;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+/* Wraps just the name. On desktop this is a plain, unstyled block (no
+   visual difference from before). On mobile it also carries a partial
+   left shift toward the ring's actual (off-screen-left) center — see the
+   media query below and --ring-cx, set from JS in introAnimations.js —
+   so the name sits inside the visible arc rather than dead-center of the
+   full viewport. */
+.intro-copy-center {
+  display: block;
 }
 
 .intro-name {
@@ -255,35 +279,18 @@ body.scroll-locked {
   text-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
-.intro-tagline {
-  font-family: var(--font-body);
-  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
-  color: var(--ink-muted);
-  margin: 18px 0 0;
-  max-width: 34ch;
-}
-
-/* Divider under the tagline, before the CTA button — wider than
-   .mural-divider further down since it has a full button below it to
-   visually balance, rather than a paragraph of body text. */
-.intro-divider {
-  width: 120px;
-  height: 1px;
-  margin: 28px auto 0;
-  border: none;
-  background: linear-gradient(90deg, transparent, var(--ink-muted), transparent);
-  opacity: 0.6;
-}
-
 .cta {
-  margin-top: 20px;
+  /* The tagline/divider that used to sit between the name and this button
+     are gone now (name only) — kept a deliberate gap here rather than
+     letting the button crowd right up under the name. */
+  margin-top: 40px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   background: transparent;
   border: 1px solid rgba(244, 239, 230, 0.35);
   border-radius: 999px;
-  padding: 11px 18px;
+  padding: 14px 26px;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.14em;
@@ -524,9 +531,39 @@ body.scroll-locked {
   }
 
   .intro-copy {
-    /* Was pinned to the bottom on mobile (flex-end + bottom padding) —
-       centered now, same as desktop, at every screen size. */
-    justify-content: center;
+    /* Was a single centered block (same as desktop) — now split into
+       three: .intro-year pinned to the top, the name centered in the
+       middle (inside the ring), and the CTA pinned to the bottom of the
+       screen, matching the sketch. Extra vertical padding (with a
+       safe-area floor for notched phones) keeps the year label and
+       button from sitting flush against the screen edges. */
+    justify-content: space-between;
+    padding: max(28px, env(safe-area-inset-top)) 6vw max(28px, env(safe-area-inset-bottom));
+  }
+
+  .intro-year {
+    display: block;
+  }
+
+  .intro-copy-center {
+    /* --ring-cx is the ring's own horizontal center offset in px (negative
+       — the ring's true center sits off-screen to the left; see
+       getCenterOffset() in introAnimations.js, which sets this custom
+       property to match). Using half of it here nudges the name toward
+       that same side — sitting inside the visible arc rather than
+       dead-center of the whole screen — without shifting it the full
+       distance, which would risk pushing the large italic name letters
+       off the left edge. */
+    transform: translateX(calc(var(--ring-cx, 0px) * 0.7));
+  }
+
+  .cta {
+    /* The 40px margin-top above is what separated the button from the
+       name when everything was one centered block — on mobile the
+       button is now its own pinned flex item, and .intro-copy's own
+       space-between already provides that gap, so this would just add
+       extra, unwanted space on top of it. */
+    margin-top: 0;
   }
 }
 
@@ -585,11 +622,6 @@ body.scroll-locked {
   .mural-divider {
     width: 55vw;
     margin-top: 4vh;
-  }
-
-  .intro-divider {
-    width: 90px;
-    margin-top: 22px;
   }
 
   .mural-description {
@@ -695,7 +727,11 @@ body.scroll-locked {
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   cursor: default;
-  animation: card-modal-pop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  /* No CSS animation here on purpose — the open/close motion (position,
+     rotation, scale) is driven entirely by GSAP in CardModal.jsx (a FLIP
+     transition to/from the real card's live orbit position). A CSS
+     `animation` touching the same `transform` property here would fight
+     GSAP's inline transform every frame. */
 }
 
 .card-modal-card::before {
@@ -705,17 +741,6 @@ body.scroll-locked {
   background: radial-gradient(circle at center, transparent 30%, var(--card-outline) 130%);
   opacity: 0.45;
   pointer-events: none;
-}
-
-@keyframes card-modal-pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.7);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .card-modal-symbol {

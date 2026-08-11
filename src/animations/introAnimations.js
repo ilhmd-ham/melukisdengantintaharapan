@@ -2,14 +2,72 @@ import gsap from 'gsap';
 
 const TWO_PI = Math.PI * 2;
 const CARD_COUNT = 36;
+const MOBILE_BREAKPOINT = 900;
+
+function isMobileViewport() {
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+}
 
 function getRadius() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  if (isMobileViewport()) {
+    // Previously sized off viewport WIDTH alone (vw * 0.86), which is why
+    // the ring reached almost to the very top and bottom edges of the
+    // screen on tall phones — its vertical reach (±radius from the
+    // vertical center) had no relationship to how much vertical room was
+    // actually free. Budgeting off viewport HEIGHT instead keeps the ring
+    // clear of both the year label pinned above it and the CTA pinned
+    // below it (see .intro-year / .intro-copy in global.css), landing it
+    // in the middle band of the screen as in the sketch. Still capped by
+    // width too, so it doesn't balloon past a sensible size on short,
+    // wide screens.
+    return Math.max(150, Math.min(vh * 0.3, vw * 0.85));
+  }
   // Leaves room for the center text block and stays clear of the
   // .intro's own edges — tuned as a fraction of the smaller viewport
   // dimension so it scales sensibly at every screen size.
   return Math.max(160, Math.min(vw, vh) * 0.4);
+}
+
+// On mobile, the ring's own center is pushed off the left edge of the
+// screen so only its near, right-facing half-arc actually falls inside
+// the viewport — matching the sketch (a half-circle bulging right, its
+// open/flat edge near the screen's left side). The far half of the ring
+// still exists and keeps animating exactly as before, just off-screen —
+// reachable by dragging the ring to rotate it (see startOrbit's
+// pointer-drag handling), which is what brings those hidden cards into
+// view. Desktop is untouched: offset (0, 0) keeps the full circle
+// centered, same as before this change.
+export function getCenterOffset(radius) {
+  if (!isMobileViewport()) {
+    setRingOffsetVar(0);
+    return { cx: 0, cy: 0 };
+  }
+  const r = radius ?? getRadius();
+  const vw = window.innerWidth;
+
+  // Two competing goals, resolved by taking whichever pushes further
+  // left: (a) the right edge of the ring should land close to the
+  // screen's own right edge (~42% of vw out from center) — this is what
+  // makes the arc actually reach the edge instead of floating with a gap
+  // — and (b) the LEFT edge of the ring must land off-screen (past -50%
+  // of vw, with a small buffer) so the far half genuinely never shows —
+  // this is the actual fix for it rendering as a near-complete circle:
+  // a fixed "-radius * 0.62" offset (the previous approach) only
+  // satisfies (b) for some radius/width combinations, not all of them.
+  const forRightEdge = vw * 0.09 - r;
+  const forHiddenLeftEdge = r - vw * 0.5 - 12;
+  const cx = Math.min(forRightEdge, forHiddenLeftEdge);
+  setRingOffsetVar(cx);
+  return { cx, cy: 0 };
+}
+
+// Exposes the ring's horizontal center offset as a CSS custom property so
+// plain CSS (the name text, see .intro-copy-center in global.css) can
+// shift to match it without duplicating this math there.
+function setRingOffsetVar(cx) {
+  document.documentElement.style.setProperty('--ring-cx', `${cx}px`);
 }
 
 function getCardBox() {
@@ -25,11 +83,14 @@ function getCardBox() {
 // also rotated to match its position on the ring (0° at 12 o'clock, 90° at
 // 3 o'clock, and so on) so the whole set reads as a fanned-out circle of
 // cards — like a spread deck — rather than a ring of upright cards.
-function circlePoint(i, radius) {
-  const angle = (i / CARD_COUNT) * TWO_PI - Math.PI / 2;
+// `spin` is the live drag/orbit angle added on top of each card's fixed
+// slot angle (0 for the static formation steps, live-updating in
+// startOrbit's tick loop); `offset` is the mobile off-screen-center shift.
+function circlePoint(i, radius, spin = 0, offset = { cx: 0, cy: 0 }) {
+  const angle = (i / CARD_COUNT) * TWO_PI - Math.PI / 2 + spin;
   return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
+    x: Math.cos(angle) * radius + offset.cx,
+    y: Math.sin(angle) * radius + offset.cy,
     rotation: (angle + Math.PI / 2) * (180 / Math.PI),
   };
 }
@@ -74,20 +135,28 @@ function shufflePoint(i, radius) {
 // so none of this fights the flip transition on `.card` or the
 // perspective/preserve-3d chain those two elements exist to carry.
 //
+// `dragEl`, if given, is the DOM element that becomes draggable once the
+// ring settles — swiping/dragging it manually rotates the ring, which on
+// mobile is how the hidden (off-screen) half of the ring gets pulled into
+// view. Optional so callers that don't need dragging (there aren't any
+// today, but keeps this function reusable) can omit it.
+//
 // Returns a controller object; call `.killOrbit()` to stop the idle
-// rotation before anything else (e.g. the caller's own code) starts
-// animating the same elements — most importantly right before the "wall
-// opens" fly-away transition takes over.
-export function playCardFormation({ entranceSelector, introTextEls, reduced }) {
+// rotation AND remove the drag listeners before anything else (e.g. the
+// caller's own code) starts animating the same elements — most
+// importantly right before the "wall opens" fly-away transition takes
+// over.
+export function playCardFormation({ entranceSelector, introTextEls, dragEl, reduced }) {
   const controller = { killOrbit: () => {} };
   const radius = getRadius();
+  const offset = getCenterOffset(radius);
   const { w: cardW, h: cardH } = getCardBox();
 
   if (reduced) {
     gsap.set(entranceSelector, {
-      x: (i) => circlePoint(i, radius).x,
-      y: (i) => circlePoint(i, radius).y,
-      rotation: (i) => circlePoint(i, radius).rotation,
+      x: (i) => circlePoint(i, radius, 0, offset).x,
+      y: (i) => circlePoint(i, radius, 0, offset).y,
+      rotation: (i) => circlePoint(i, radius, 0, offset).rotation,
       opacity: 1,
       scale: 1,
     });
@@ -105,7 +174,7 @@ export function playCardFormation({ entranceSelector, introTextEls, reduced }) {
   gsap.set(introTextEls, { opacity: 0, y: 24 });
 
   gsap
-    .timeline({ onComplete: () => startOrbit(entranceSelector, radius, controller) })
+    .timeline({ onComplete: () => startOrbit(entranceSelector, radius, controller, dragEl) })
     .to(entranceSelector, {
       x: (i) => gridPoint(i, cardW, cardH).x,
       y: (i) => gridPoint(i, cardW, cardH).y,
@@ -123,9 +192,9 @@ export function playCardFormation({ entranceSelector, introTextEls, reduced }) {
     .to(
       entranceSelector,
       {
-        x: (i) => circlePoint(i, radius).x,
-        y: (i) => circlePoint(i, radius).y,
-        rotation: (i) => circlePoint(i, radius).rotation,
+        x: (i) => circlePoint(i, radius, 0, offset).x,
+        y: (i) => circlePoint(i, radius, 0, offset).y,
+        rotation: (i) => circlePoint(i, radius, 0, offset).rotation,
         duration: 1.2,
         ease: 'power3.inOut',
         stagger: { each: 0.014, from: 'center' },
@@ -147,7 +216,16 @@ export function playCardFormation({ entranceSelector, introTextEls, reduced }) {
 // straight outward from the center (same fanned look as the initial
 // formation), so the whole ring reads as one slowly turning wheel of
 // cards rather than a set of upright cards sliding around a track.
-function startOrbit(entranceSelector, initialRadius, controller) {
+//
+// On top of that ambient rotation, `dragEl` (if given) becomes
+// draggable/swipeable: a manual angular offset accumulates from
+// pointer-drag distance and is added to every card's angle every frame,
+// so dragging the ring actually spins it — this is how cards that are
+// off-screen (see getCenterOffset(), mobile only) get pulled into view.
+// A drag that moves more than a few pixels also suppresses the click that
+// would otherwise follow on release, so swiping the ring never
+// accidentally opens whatever card happened to be under the finger.
+function startOrbit(entranceSelector, initialRadius, controller, dragEl) {
   const targets = gsap.utils.toArray(entranceSelector);
   const setX = targets.map((el) => gsap.quickSetter(el, 'x', 'px'));
   const setY = targets.map((el) => gsap.quickSetter(el, 'y', 'px'));
@@ -155,27 +233,98 @@ function startOrbit(entranceSelector, initialRadius, controller) {
   const angularSpeed = TWO_PI / 150; // one full revolution every ~150s — slow and ambient
   const start = performance.now();
   let radius = initialRadius;
+  let offset = getCenterOffset(radius);
+  let manualOffset = 0; // radians, accumulated from dragging — persists across frames
 
   const onResize = () => {
     radius = getRadius();
+    offset = getCenterOffset(radius);
   };
   window.addEventListener('resize', onResize);
 
   const tick = () => {
     const t = (performance.now() - start) / 1000;
+    const spin = t * angularSpeed + manualOffset;
     for (let i = 0; i < targets.length; i++) {
-      const baseAngle = (i / CARD_COUNT) * TWO_PI - Math.PI / 2;
-      const angle = baseAngle + t * angularSpeed;
-      setX[i](Math.cos(angle) * radius);
-      setY[i](Math.sin(angle) * radius);
-      setRotation[i]((angle + Math.PI / 2) * (180 / Math.PI));
+      const p = circlePoint(i, radius, spin, offset);
+      setX[i](p.x);
+      setY[i](p.y);
+      setRotation[i](p.rotation);
     }
   };
 
   gsap.ticker.add(tick);
+
+  // --- Drag-to-rotate ---------------------------------------------------
+  let cleanupDrag = () => {};
+  if (dragEl) {
+    let dragging = false;
+    let moved = false;
+    let pointerId = null;
+    let startClientY = 0;
+    let startOffsetAtDrag = 0;
+    let suppressNextClick = false;
+
+    const onPointerDown = (e) => {
+      // Only the primary button/touch/pen contact starts a drag.
+      if (e.button !== undefined && e.button !== 0) return;
+      dragging = true;
+      moved = false;
+      pointerId = e.pointerId;
+      startClientY = e.clientY;
+      startOffsetAtDrag = manualOffset;
+      dragEl.setPointerCapture?.(pointerId);
+    };
+
+    const onPointerMove = (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      const dy = e.clientY - startClientY;
+      if (!moved && Math.abs(dy) > 5) moved = true;
+      // Vertical drag distance converted to an angle via the ring's own
+      // radius (arc length ≈ radius × angle) — matches the visible arc on
+      // mobile, which curves top-to-bottom along the screen's right side,
+      // so dragging up/down feels like directly spinning that curve.
+      manualOffset = startOffsetAtDrag + dy / radius;
+    };
+
+    const endDrag = (e) => {
+      if (!dragging || (pointerId !== null && e.pointerId !== pointerId)) return;
+      dragging = false;
+      if (moved) suppressNextClick = true;
+      pointerId = null;
+    };
+
+    // Capture phase, so this runs before the click ever reaches a card's
+    // own onClick handler (added by React in the bubble phase).
+    const onClickCapture = (e) => {
+      if (suppressNextClick) {
+        e.stopPropagation();
+        e.preventDefault();
+        suppressNextClick = false;
+      }
+    };
+
+    dragEl.style.touchAction = 'none';
+    dragEl.style.cursor = 'grab';
+    dragEl.addEventListener('pointerdown', onPointerDown);
+    dragEl.addEventListener('pointermove', onPointerMove);
+    dragEl.addEventListener('pointerup', endDrag);
+    dragEl.addEventListener('pointercancel', endDrag);
+    dragEl.addEventListener('click', onClickCapture, true);
+
+    cleanupDrag = () => {
+      dragEl.removeEventListener('pointerdown', onPointerDown);
+      dragEl.removeEventListener('pointermove', onPointerMove);
+      dragEl.removeEventListener('pointerup', endDrag);
+      dragEl.removeEventListener('pointercancel', endDrag);
+      dragEl.removeEventListener('click', onClickCapture, true);
+    };
+  }
+
   controller.killOrbit = () => {
     gsap.ticker.remove(tick);
     window.removeEventListener('resize', onResize);
+    cleanupDrag();
   };
 }
 

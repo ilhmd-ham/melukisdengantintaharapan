@@ -1,14 +1,12 @@
 import { forwardRef, useEffect, useRef } from 'react';
 import CharacterGrid from '../components/CharacterGrid.jsx';
 import { playCardFormation, playWallOpenTransition } from '../animations/introAnimations.js';
-import { ARTIST_NAME, INTRO_TAGLINE, CTA_LABEL } from '../data/content.js';
+import { ARTIST_NAME, INTRO_YEAR, CTA_LABEL } from '../data/content.js';
 
 const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural }, ref) {
   const stageRef = useRef(null);
-  const eyebrowRef = useRef(null);
+  const yearRef = useRef(null);
   const nameRef = useRef(null);
-  const taglineRef = useRef(null);
-  const dividerRef = useRef(null);
   const ctaRef = useRef(null);
   const hasOpened = useRef(false);
   const rafRef = useRef(null);
@@ -26,13 +24,7 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
       const raf2 = requestAnimationFrame(() => {
         if (cancelled) return;
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const textEls = [
-          eyebrowRef.current,
-          nameRef.current,
-          taglineRef.current,
-          dividerRef.current,
-          ctaRef.current,
-        ];
+        const textEls = [yearRef.current, nameRef.current, ctaRef.current];
         formationRef.current = playCardFormation({
           entranceSelector: '.card-anim',
           introTextEls: textEls,
@@ -60,13 +52,7 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
     formationRef.current?.killOrbit();
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const textEls = [
-      eyebrowRef.current,
-      nameRef.current,
-      taglineRef.current,
-      dividerRef.current,
-      ctaRef.current,
-    ];
+    const textEls = [yearRef.current, nameRef.current, ctaRef.current];
 
     playWallOpenTransition({
       stageEl: stageRef.current,
@@ -90,12 +76,23 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
         </div>
 
         <div className="intro-copy">
-          <p className="intro-eyebrow" ref={eyebrowRef}>
-            Selamat datang
+          {/* Only shown on mobile (see .intro-year in global.css) — pinned
+              to the top of the screen, above the ring. Hidden on desktop,
+              where the name is centered as a single block same as before. */}
+          <p className="intro-year" ref={yearRef}>
+            {INTRO_YEAR}
           </p>
-          <h1 className="intro-name" ref={nameRef}>
-            {ARTIST_NAME}
-          </h1>
+
+          {/* Kept in its own wrapper (rather than styling .intro-name
+              directly) so the same left-shift-to-match-the-ring's-center
+              trick (--ring-cx, see global.css) can apply to it without
+              having to touch .intro-name itself. */}
+          <div className="intro-copy-center">
+            <h1 className="intro-name" ref={nameRef}>
+              {ARTIST_NAME}
+            </h1>
+          </div>
+
           <button
             type="button"
             className="cta"

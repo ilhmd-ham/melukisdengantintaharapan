@@ -1,4 +1,4 @@
-export default function CharacterCard({ character, onSelect }) {
+export default function CharacterCard({ character, isLifted, onSelect, registerRef }) {
   const { id, symbol, name, palette } = character;
 
   // Cards sit on a closed ring (see animations/introAnimations.js), each
@@ -22,13 +22,15 @@ export default function CharacterCard({ character, onSelect }) {
   };
 
   return (
-    <div className="card-slot" style={{ zIndex }}>
+    <div className={`card-slot ${isLifted ? 'is-lifted' : ''}`} style={{ zIndex }}>
       {/* This is what the shuffle → grid → circle → orbit animation
           (x/y/rotation/opacity, all via GSAP) targets — see
           animations/introAnimations.js. Keeping it separate from
           .card-slot (a plain, never-transformed anchor point) means that
           animation never fights the perspective/preserve-3d chain those
-          two elements exist to carry. */}
+          two elements exist to carry. It's also what CardModal reads
+          gsap.getProperty(el, 'rotation') from to know this card's exact
+          live orbit angle when flying the modal to/from it. */}
       <span className="card-anim">
         <div
           className="card"
@@ -37,6 +39,7 @@ export default function CharacterCard({ character, onSelect }) {
           aria-label={`Lihat kartu ${symbol}, ${name}`}
           onClick={handleActivate}
           onKeyDown={handleKeyDown}
+          ref={(el) => registerRef?.(id, el)}
           style={{
             background: palette.back,
             color: palette.ink,

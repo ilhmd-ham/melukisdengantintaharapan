@@ -3,6 +3,8 @@
 
 export const ARTIST_NAME = 'XII RPL C';
 
+export const INTRO_YEAR = '2024 / 2025';
+
 export const INTRO_TAGLINE = 'Melukis dengan Tinta Harapan';
 
 export const CTA_LABEL = 'LIHAT PESAN MURAL';
