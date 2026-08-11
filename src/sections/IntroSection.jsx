@@ -1,7 +1,12 @@
-import { forwardRef, useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import CharacterGrid from '../components/CharacterGrid.jsx';
-import { playCardFormation, playWallOpenTransition } from '../animations/introAnimations.js';
-import { ARTIST_NAME, INTRO_YEAR, CTA_LABEL } from '../data/content.js';
+import {
+  playCardFormation,
+  playWallOpenTransition,
+  getCenterOffset,
+  getRadius,
+} from '../animations/introAnimations.js';
+import { ARTIST_NAME_PREFIX, ARTIST_NAME_SHORT, INTRO_YEAR, CTA_LABEL } from '../data/content.js';
 
 const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural }, ref) {
   const stageRef = useRef(null);
@@ -11,6 +16,21 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
   const hasOpened = useRef(false);
   const rafRef = useRef(null);
   const formationRef = useRef(null); // { killOrbit } — see introAnimations.js
+
+  // Sets --ring-cx (read by .intro-copy-center in global.css to shift the
+  // name to match the ring's off-screen-left center on mobile) the instant
+  // this section mounts — synchronously, before the browser paints. The
+  // card-formation animation below also sets this same variable, but only
+  // after two deferred animation frames; without this earlier pass, the
+  // very first paint (and any resize that lands before the formation
+  // effect runs) used CSS's own 0px fallback, so the name would flash — or
+  // on slower devices genuinely sit — dead-center before snapping left.
+  useLayoutEffect(() => {
+    getCenterOffset(getRadius());
+    const onResize = () => getCenterOffset(getRadius());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     // Mounting this section also mounts 36 fairly heavy card components in
@@ -89,7 +109,11 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
               having to touch .intro-name itself. */}
           <div className="intro-copy-center">
             <h1 className="intro-name" ref={nameRef}>
-              {ARTIST_NAME}
+              {/* "XII" is hidden on mobile via .intro-name-prefix in
+                  global.css — only "RPL C" shows there; desktop shows
+                  both. */}
+              <span className="intro-name-prefix">{ARTIST_NAME_PREFIX} </span>
+              {ARTIST_NAME_SHORT}
             </h1>
           </div>
 

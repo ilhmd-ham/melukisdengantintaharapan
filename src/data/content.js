@@ -1,7 +1,11 @@
 // Edit this file to change the words on the site. Nothing else needs to
 // change — every section pulls its copy from here.
 
-export const ARTIST_NAME = 'XII RPL C';
+// Split so "XII" can be shown only on desktop (see .intro-name-prefix in
+// global.css) — mobile shows just ARTIST_NAME_SHORT ("RPL C").
+export const ARTIST_NAME_PREFIX = 'XII';
+export const ARTIST_NAME_SHORT = 'RPL C';
+export const ARTIST_NAME = `${ARTIST_NAME_PREFIX} ${ARTIST_NAME_SHORT}`;
 
 export const INTRO_YEAR = '2024 / 2025';
 

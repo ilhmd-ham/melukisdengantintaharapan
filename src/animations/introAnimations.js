@@ -8,7 +8,7 @@ function isMobileViewport() {
   return window.innerWidth <= MOBILE_BREAKPOINT;
 }
 
-function getRadius() {
+export function getRadius() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   if (isMobileViewport()) {

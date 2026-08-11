@@ -26,6 +26,14 @@
    ============================================================ */
 * {
   box-sizing: border-box;
+  /* Kills the translucent blue/gray flash mobile browsers paint over any
+     tappable element (cards, buttons, the modal overlay) on touch —
+     that flash is what read as "text-selection blue" when tapping a
+     card or opening/closing the modal. Applied on every element (not
+     just html/body) since some mobile browsers only honor this when
+     it's set on the element actually being tapped, not just inherited
+     from an ancestor. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -36,6 +44,7 @@ html {
      <ScrollProgress />) takes its place. */
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html::-webkit-scrollbar,
@@ -185,6 +194,16 @@ body.scroll-locked {
   /* Individually clickable — see CardModal — to view one enlarged and
      centered on screen. */
   cursor: pointer;
+  /* A quick tap/double-tap on a clickable block like this can otherwise
+     trigger the browser's native text-selection highlight (the same blue
+     you'd see copying text) instead of just registering the click —
+     these three rules stop that on every mobile browser (WebKit,
+     Firefox, and the standard property) without affecting selectable
+     body copy elsewhere on the page. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 /* Outline glow that fades from the (now thicker) border inward toward the
@@ -277,6 +296,12 @@ body.scroll-locked {
   line-height: 1;
   margin: 0;
   text-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Shown on desktop by default — hidden on mobile (see the media query
+   below), where the name reads just "RPL C" instead of "XII RPL C". */
+.intro-name-prefix {
+  display: inline;
 }
 
 .cta {
@@ -545,6 +570,10 @@ body.scroll-locked {
     display: block;
   }
 
+  .intro-name-prefix {
+    display: none;
+  }
+
   .intro-copy-center {
     /* --ring-cx is the ring's own horizontal center offset in px (negative
        — the ring's true center sits off-screen to the left; see
@@ -554,7 +583,7 @@ body.scroll-locked {
        dead-center of the whole screen — without shifting it the full
        distance, which would risk pushing the large italic name letters
        off the left edge. */
-    transform: translateX(calc(var(--ring-cx, 0px) * 0.7));
+    transform: translateX(calc(var(--ring-cx, 0px) * 0.5));
   }
 
   .cta {
@@ -700,6 +729,13 @@ body.scroll-locked {
   -webkit-backdrop-filter: blur(6px);
   animation: card-modal-fade-in 0.25s ease both;
   cursor: pointer;
+  /* Same fix as .card — a tap on this full-screen clickable overlay (to
+     close the modal) shouldn't ever trigger the native text-selection
+     highlight. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 @keyframes card-modal-fade-in {
@@ -727,6 +763,10 @@ body.scroll-locked {
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   cursor: default;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
   /* No CSS animation here on purpose — the open/close motion (position,
      rotation, scale) is driven entirely by GSAP in CardModal.jsx (a FLIP
      transition to/from the real card's live orbit position). A CSS
@@ -778,6 +818,10 @@ body.scroll-locked {
   line-height: 1;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 .card-modal-close:hover {
