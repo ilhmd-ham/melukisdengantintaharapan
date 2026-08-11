@@ -273,13 +273,25 @@ function startOrbit(entranceSelector, initialRadius, controller, dragEl) {
       pointerId = e.pointerId;
       startClientY = e.clientY;
       startOffsetAtDrag = manualOffset;
-      dragEl.setPointerCapture?.(pointerId);
+      // Pointer capture is NOT taken here — see onPointerMove for why.
     };
 
     const onPointerMove = (e) => {
       if (!dragging || e.pointerId !== pointerId) return;
       const dy = e.clientY - startClientY;
-      if (!moved && Math.abs(dy) > 5) moved = true;
+      if (!moved && Math.abs(dy) > 5) {
+        moved = true;
+        // Only take pointer capture once this has actually become a
+        // drag (past the 5px threshold) — capturing unconditionally on
+        // every pointerdown (the previous version) retargets ALL
+        // subsequent pointer events, including the pointerup a plain tap
+        // ends with, to dragEl instead of whichever card was actually
+        // touched. That silently ate every tap's click, since the
+        // browser then had nothing to fire it on — cards stopped opening
+        // even though nothing else looked wrong. Capturing only once a
+        // real drag is confirmed leaves plain taps completely untouched.
+        dragEl.setPointerCapture?.(pointerId);
+      }
       // Vertical drag distance converted to an angle via the ring's own
       // radius (arc length ≈ radius × angle) — matches the visible arc on
       // mobile, which curves top-to-bottom along the screen's right side,

@@ -416,13 +416,16 @@ body.scroll-locked {
   text-align: center;
 }
 
-/* Decorative ring cluster behind the headline — three circles of
-   different sizes, each offset from the last so they overlap rather than
-   sitting concentrically, echoing the card ring on the intro screen and
-   giving this otherwise text-only screen some visual weight ("lebih
-   rame"). Sized off the smaller viewport dimension like the intro ring
-   so it scales sensibly at every screen size. Pure decoration — never
-   intercepts clicks, and sits behind the title (z-index below it). */
+/* Decorative ring cluster — three circles of different sizes, grouped
+   into two out-of-the-way clusters (top-right, bottom-left) rather than
+   centered behind the headline like before. The headline sits centered
+   both ways in this block, so keeping the rings off in the corners is
+   what stops them from ever crossing the text; echoes the card ring on
+   the intro screen and gives this otherwise text-only screen some
+   visual weight ("lebih rame") without competing with what's meant to
+   be read. Sized off the smaller viewport dimension so it scales
+   sensibly at every screen size. Pure decoration — never intercepts
+   clicks, and sits behind the title (z-index below it). */
 .mural-hero-rings {
   position: absolute;
   inset: 0;
@@ -433,30 +436,37 @@ body.scroll-locked {
 
 .mural-hero-ring {
   position: absolute;
-  top: 50%;
-  left: 50%;
   border: 1px solid rgba(244, 239, 230, 0.16);
   border-radius: 50%;
 }
 
+/* Top-right cluster: two overlapping rings, mostly hanging off the
+   corner so only an arc actually shows — same "true center sits
+   off-screen" trick as the intro ring, just tucked in a corner instead
+   of spanning the whole side. */
 .mural-hero-ring--1 {
-  width: min(72vw, 60vh);
-  height: min(72vw, 60vh);
-  transform: translate(-62%, -55%);
+  width: min(46vw, 42vh);
+  height: min(46vw, 42vh);
+  top: -14%;
+  right: -16%;
 }
 
 .mural-hero-ring--2 {
-  width: min(46vw, 40vh);
-  height: min(46vw, 40vh);
-  border-color: rgba(217, 154, 61, 0.22); /* --ochre, dimmed */
-  transform: translate(-38%, -60%);
+  width: min(28vw, 26vh);
+  height: min(28vw, 26vh);
+  border-color: rgba(217, 154, 61, 0.24); /* --ochre, dimmed */
+  top: 6%;
+  right: 4%;
 }
 
+/* Bottom-left: a single smaller ring, balancing the top-right cluster
+   without adding a second busy corner. */
 .mural-hero-ring--3 {
-  width: min(30vw, 26vh);
-  height: min(30vw, 26vh);
+  width: min(22vw, 20vh);
+  height: min(22vw, 20vh);
   border-color: rgba(53, 80, 201, 0.22); /* --ultramarine, dimmed */
-  transform: translate(-48%, -35%);
+  bottom: -8%;
+  left: -6%;
 }
 
 /* Bottom-pinned scroll-down hint on the title screen — this section is
@@ -632,6 +642,43 @@ body.scroll-locked {
   margin-bottom: 0;
 }
 
+/* Wraps the description + closing mark (see MuralSection.jsx) purely to
+   anchor the two decorative rings below — tucked into the side gutters
+   via a large negative offset so only a sliver actually shows near each
+   edge, well clear of the description's own centered ~680px text
+   column. Kept low-opacity and z-index'd behind the text (the
+   description and end-mark both already sit above at z-index 3), so
+   this only fills in what would otherwise be bare space on either side
+   of that long stretch of paragraph text — never competes with reading
+   it. Clipped by .mural's own overflow:hidden, same as the hero rings. */
+.mural-lower-decor {
+  position: relative;
+}
+
+.mural-lower-decor::before,
+.mural-lower-decor::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: min(30vw, 260px);
+  height: min(30vw, 260px);
+  border-radius: 50%;
+  border: 1px solid rgba(244, 239, 230, 0.14);
+  pointer-events: none;
+}
+
+.mural-lower-decor::before {
+  top: 8%;
+  left: -14vw;
+  border-color: rgba(217, 154, 61, 0.18); /* --ochre, dimmed */
+}
+
+.mural-lower-decor::after {
+  top: 46%;
+  right: -14vw;
+  border-color: rgba(53, 80, 201, 0.18); /* --ultramarine, dimmed */
+}
+
 /* ============================================================
    RESPONSIVE — MOBILE
    ============================================================ */
@@ -671,7 +718,7 @@ body.scroll-locked {
        outer max(...) is a safety floor — never shift past -38vw of the
        viewport regardless of what the ring math computes, so the large
        italic letters can't run off the left edge on any screen size. */
-    transform: translateX(max(calc(var(--ring-cx, 0px) * 0.78), -38vw));
+    transform: translateX(max(calc(var(--ring-cx, 0px) * 0.78), -25vw));
   }
 
   .cta {

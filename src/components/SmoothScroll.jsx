@@ -29,8 +29,9 @@ export default function SmoothScroll({ children }) {
       duration: 1.6,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
+      syncTouch: true,
       wheelMultiplier: 0.7,
-      touchMultiplier: 1,
+      touchMultiplier: 0.6,
     });
     lenisRef.current = lenis;
     setReady(true);

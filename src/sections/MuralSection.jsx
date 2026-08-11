@@ -138,33 +138,43 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
       {/* Divider between the slogan and the description below it. */}
       <hr className="mural-divider" />
 
-      {/* 3. Description below the caption. Split into one <p> per paragraph
-          (rather than a single block with raw \n's, which the browser
-          would just collapse into spaces) so the long-form text keeps its
-          paragraph breaks and stays readable. The ref stays on the
-          wrapper so the existing single ScrollTrigger still fades the
-          whole block in as one unit. */}
-      <div className="mural-description" ref={descriptionRef}>
-        {descriptionParagraphs.map((paragraph, i) => (
-          <p className="mural-description-paragraph" key={i}>
-            {paragraph}
-          </p>
-        ))}
-      </div>
+      {/* Wraps the description + closing mark together purely so the
+          decorative rings below (::before/::after) have one box to
+          anchor to — same idea as .mural-hero-rings above, just tucked
+          into the side gutters (well outside the description's own
+          centered text column) instead of a corner, so the long stretch
+          of paragraph text down here doesn't read as bare either. */}
+      <div className="mural-lower-decor">
+        {/* 3. Description below the caption. Split into one <p> per
+            paragraph (rather than a single block with raw \n's, which
+            the browser would just collapse into spaces) so the
+            long-form text keeps its paragraph breaks and stays
+            readable. The ref stays on the wrapper so the existing
+            single ScrollTrigger still fades the whole block in as one
+            unit. */}
+        <div className="mural-description" ref={descriptionRef}>
+          {descriptionParagraphs.map((paragraph, i) => (
+            <p className="mural-description-paragraph" key={i}>
+              {paragraph}
+            </p>
+          ))}
+        </div>
 
-      {/* Closing mark — a short "end of chapter" flourish under the
-          description, echoing the "TAMAT" divider at the end of a novel. */}
-      <div className="mural-end-mark" aria-hidden="true">
-        <span className="mural-end-mark-line" />
-        <span className="mural-end-mark-ornament">
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-            <path
-              d="M12 1 L14.5 9.5 L23 12 L14.5 14.5 L12 23 L9.5 14.5 L1 12 L9.5 9.5 Z"
-              fill="currentColor"
-            />
-          </svg>
-        </span>
-        <span className="mural-end-mark-line" />
+        {/* Closing mark — a short "end of chapter" flourish under the
+            description, echoing the "TAMAT" divider at the end of a
+            novel. */}
+        <div className="mural-end-mark" aria-hidden="true">
+          <span className="mural-end-mark-line" />
+          <span className="mural-end-mark-ornament">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <path
+                d="M12 1 L14.5 9.5 L23 12 L14.5 14.5 L12 23 L9.5 14.5 L1 12 L9.5 9.5 Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          <span className="mural-end-mark-line" />
+        </div>
       </div>
     </section>
   );
