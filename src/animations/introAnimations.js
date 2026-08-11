@@ -302,7 +302,22 @@ function startOrbit(entranceSelector, initialRadius, controller, dragEl) {
     const endDrag = (e) => {
       if (!dragging || (pointerId !== null && e.pointerId !== pointerId)) return;
       dragging = false;
-      if (moved) suppressNextClick = true;
+      if (moved) {
+        suppressNextClick = true;
+        // Safety net: on many mobile browsers, a pointerup that follows
+        // real movement never fires a click at all (there's nothing left
+        // for onClickCapture below to intercept and clear the flag on).
+        // Without this, suppressNextClick stayed stuck at true until
+        // whatever the NEXT tap happened to be — which is what silently
+        // ate the first tap on a card right after every drag, and only
+        // the second tap (which found the flag already cleared) actually
+        // opened it. Clearing it on the next tick either way — whether a
+        // click showed up to consume it or not — means it can never
+        // outlive the gesture that set it.
+        setTimeout(() => {
+          suppressNextClick = false;
+        }, 0);
+      }
       pointerId = null;
     };
 

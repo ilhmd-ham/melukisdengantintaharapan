@@ -718,7 +718,7 @@ body.scroll-locked {
        outer max(...) is a safety floor — never shift past -38vw of the
        viewport regardless of what the ring math computes, so the large
        italic letters can't run off the left edge on any screen size. */
-    transform: translateX(max(calc(var(--ring-cx, 0px) * 0.78), -25vw));
+    transform: translateX(max(calc(var(--ring-cx, 0px) * 0.78), -28vw));
   }
 
   .cta {
