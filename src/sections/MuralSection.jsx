@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react';
 import { setupMuralScroll } from '../animations/muralAnimations.js';
+import { useScrollTo } from '../components/SmoothScroll.jsx';
 import {
   MURAL_IMAGE,
   MURAL_IMAGE_ALT,
@@ -16,6 +17,7 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
   const heroTitleRef = useRef(null);
   const imageCaptionRef = useRef(null);
   const descriptionRef = useRef(null);
+  const scrollTo = useScrollTo();
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -43,6 +45,11 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
   // too, so both texts rise the same way.
   const heroTitleWords = INTRO_TAGLINE.split(' ');
 
+  // Scrolls from the full-screen title down to the artwork just below it
+  // — same Lenis-aware helper the rest of the app uses, so this respects
+  // reduced-motion and falls back gracefully if Lenis isn't ready yet.
+  const handleScrollHint = () => scrollTo(frameRef.current);
+
   return (
     <section className="mural" ref={ref} aria-label="Karya mural">
       <div className="mural-backdrop" ref={backdropRef} aria-hidden="true" />
@@ -52,6 +59,16 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
           (grigoriak.doctor "Your Beauty" style). Scrolling here is
           completely free — nothing intercepts the wheel or touch input. */}
       <div className="mural-hero">
+        {/* Purely decorative — three offset, overlapping rings behind the
+            headline (echoes the card ring on the intro screen) so this
+            first screen doesn't read as bare/empty. aria-hidden since
+            they carry no information. */}
+        <div className="mural-hero-rings" aria-hidden="true">
+          <span className="mural-hero-ring mural-hero-ring--1" />
+          <span className="mural-hero-ring mural-hero-ring--2" />
+          <span className="mural-hero-ring mural-hero-ring--3" />
+        </div>
+
         <h2 className="mural-hero-title" ref={heroTitleRef}>
           {heroTitleWords.map((word, i) => (
             <span className="mural-hero-title-mask" key={i}>
@@ -59,6 +76,28 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
             </span>
           ))}
         </h2>
+
+        {/* Pinned to the bottom of this full-screen title, hinting that
+            there's more below — this section is free-scroll (no
+            scroll-lock like the intro), so unlike the intro's CTA button
+            this only needs to nudge the scroll along, not gate it. */}
+        <button
+          type="button"
+          className="mural-scroll-hint"
+          onClick={handleScrollHint}
+          aria-label="Gulir ke bawah"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              d="M12 4 L12 19 M6 13 L12 19 L18 13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
 
       {/* 2. Full-size image below the title — starts faded out, clipped

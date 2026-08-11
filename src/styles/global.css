@@ -416,6 +416,93 @@ body.scroll-locked {
   text-align: center;
 }
 
+/* Decorative ring cluster behind the headline — three circles of
+   different sizes, each offset from the last so they overlap rather than
+   sitting concentrically, echoing the card ring on the intro screen and
+   giving this otherwise text-only screen some visual weight ("lebih
+   rame"). Sized off the smaller viewport dimension like the intro ring
+   so it scales sensibly at every screen size. Pure decoration — never
+   intercepts clicks, and sits behind the title (z-index below it). */
+.mural-hero-rings {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mural-hero-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px solid rgba(244, 239, 230, 0.16);
+  border-radius: 50%;
+}
+
+.mural-hero-ring--1 {
+  width: min(72vw, 60vh);
+  height: min(72vw, 60vh);
+  transform: translate(-62%, -55%);
+}
+
+.mural-hero-ring--2 {
+  width: min(46vw, 40vh);
+  height: min(46vw, 40vh);
+  border-color: rgba(217, 154, 61, 0.22); /* --ochre, dimmed */
+  transform: translate(-38%, -60%);
+}
+
+.mural-hero-ring--3 {
+  width: min(30vw, 26vh);
+  height: min(30vw, 26vh);
+  border-color: rgba(53, 80, 201, 0.22); /* --ultramarine, dimmed */
+  transform: translate(-48%, -35%);
+}
+
+/* Bottom-pinned scroll-down hint on the title screen — this section is
+   free-scroll (unlike the intro, nothing gates it), so this only needs
+   to nudge the visitor along, not block them. The gentle up/down bob
+   (rather than a static icon) is what reads as "scroll" at a glance. */
+.mural-scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(244, 239, 230, 0.35);
+  border-radius: 50%;
+  background: rgba(23, 20, 15, 0.35);
+  color: var(--ink);
+  cursor: pointer;
+  animation: mural-scroll-hint-bob 1.8s ease-in-out infinite;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mural-scroll-hint:hover {
+  background: rgba(23, 20, 15, 0.6);
+  border-color: rgba(244, 239, 230, 0.55);
+}
+
+.mural-scroll-hint:focus-visible {
+  outline: 2px solid var(--ochre);
+  outline-offset: 3px;
+}
+
+@keyframes mural-scroll-hint-bob {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(6px);
+  }
+}
+
 .mural-hero-title {
   margin: 0;
   display: flex;
@@ -578,12 +665,13 @@ body.scroll-locked {
     /* --ring-cx is the ring's own horizontal center offset in px (negative
        — the ring's true center sits off-screen to the left; see
        getCenterOffset() in introAnimations.js, which sets this custom
-       property to match). Using half of it here nudges the name toward
-       that same side — sitting inside the visible arc rather than
-       dead-center of the whole screen — without shifting it the full
-       distance, which would risk pushing the large italic name letters
-       off the left edge. */
-    transform: translateX(calc(var(--ring-cx, 0px) * 0.5));
+       property to match). Pulling further toward it now (0.78 of the way,
+       was 0.5) so the name sits noticeably further left inside the
+       visible arc instead of reading as still roughly centered. The
+       outer max(...) is a safety floor — never shift past -38vw of the
+       viewport regardless of what the ring math computes, so the large
+       italic letters can't run off the left edge on any screen size. */
+    transform: translateX(max(calc(var(--ring-cx, 0px) * 0.78), -38vw));
   }
 
   .cta {
@@ -843,6 +931,10 @@ body.scroll-locked {
   .cta,
   .cta-arrow {
     transition: none !important;
+  }
+
+  .mural-scroll-hint {
+    animation: none !important;
   }
 
   .mural-image-wrap {

@@ -10,6 +10,7 @@ import { ARTIST_NAME_PREFIX, ARTIST_NAME_SHORT, INTRO_YEAR, CTA_LABEL } from '..
 
 const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural }, ref) {
   const stageRef = useRef(null);
+  const wallRef = useRef(null);
   const yearRef = useRef(null);
   const nameRef = useRef(null);
   const ctaRef = useRef(null);
@@ -48,6 +49,16 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
         formationRef.current = playCardFormation({
           entranceSelector: '.card-anim',
           introTextEls: textEls,
+          // Makes the ring swipeable — a drag/swipe on the wall rotates
+          // it (see startOrbit's pointer-drag handling in
+          // introAnimations.js, which already had this wired up but was
+          // never actually given an element to bind to). This is what
+          // lets every card be reached by hand instead of only via the
+          // slow ambient auto-rotation — most useful on mobile, where the
+          // ring's far half sits off-screen (see getCenterOffset) and
+          // otherwise only the automatic orbit would ever bring it into
+          // view.
+          dragEl: wallRef.current,
           reduced,
         });
       });
@@ -91,7 +102,7 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
       aria-label="Perkenalan artis dan kartu karakter"
     >
       <div className="intro-stage" ref={stageRef}>
-        <div className="intro-wall">
+        <div className="intro-wall" ref={wallRef}>
           <CharacterGrid />
         </div>
 
