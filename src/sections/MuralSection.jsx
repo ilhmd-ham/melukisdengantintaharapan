@@ -1,4 +1,5 @@
-import { forwardRef, useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
 import { setupMuralScroll } from '../animations/muralAnimations.js';
 import { useScrollTo } from '../components/SmoothScroll.jsx';
 import {
@@ -6,6 +7,7 @@ import {
   MURAL_IMAGE_ALT,
   MURAL_SLOGAN,
   MURAL_DESCRIPTION,
+  MURAL_DESCRIPTION_EN,
   INTRO_TAGLINE,
 } from '../data/content.js';
 
@@ -17,7 +19,86 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
   const heroTitleRef = useRef(null);
   const imageCaptionRef = useRef(null);
   const descriptionRef = useRef(null);
+  const lowerDecorRef = useRef(null);
   const scrollTo = useScrollTo();
+
+  // Narration language toggle (ID/EN). Only the long-form description
+  // block is bilingual — everything else on the page stays as-is.
+  const [lang, setLang] = useState('id');
+
+  // Refs for the height-matching logic below: langStackRef is the grid
+  // wrapper whose inline height gets animated, idTextRef/enTextRef are
+  // the two language blocks stacked inside it so we can measure
+  // whichever one is actually active.
+  const langStackRef = useRef(null);
+  const idTextRef = useRef(null);
+  const enTextRef = useRef(null);
+  const isFirstHeightSync = useRef(true);
+
+  // The translate button only makes sense while the reader is actually
+  // in the narration block, so it stays hidden the rest of the page and
+  // fades/slides in once .mural-lower-decor (description + end mark)
+  // scrolls into view, and back out again once it's scrolled past.
+  const [narrationVisible, setNarrationVisible] = useState(false);
+
+  useEffect(() => {
+    const el = lowerDecorRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNarrationVisible(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setNarrationVisible(entry.isIntersecting),
+      { threshold: 0.08 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Keep the description stack's height matched to whichever language
+  // is actually active, instead of always reserving room for the taller
+  // of the two. scrollHeight of the active block is measured every time
+  // `lang` changes (and on mount) and applied as an explicit px height;
+  // the CSS transition on .mural-description-stack then animates
+  // between sizes so the crossfade and the resize happen together.
+  useLayoutEffect(() => {
+    const stack = langStackRef.current;
+    const activeEl = lang === 'id' ? idTextRef.current : enTextRef.current;
+    if (!stack || !activeEl) return undefined;
+
+    const targetHeight = activeEl.scrollHeight;
+
+    if (isFirstHeightSync.current) {
+      // First paint: set the height immediately, no animation, so there's
+      // never a flash of the wrong size before the transition kicks in.
+      gsap.set(stack, { height: targetHeight });
+      isFirstHeightSync.current = false;
+      return undefined;
+    }
+
+    gsap.killTweensOf(stack);
+    gsap.to(stack, {
+      height: targetHeight,
+      duration: 0.5,
+      ease: 'power2.inOut',
+    });
+
+    return () => gsap.killTweensOf(stack);
+  }, [lang]);
+
+  // Text can reflow at the same language (window resized, font loaded
+  // late, etc.), so re-measure the active block on resize too — applied
+  // instantly, no transition, since this isn't a language switch.
+  useEffect(() => {
+    const handleResize = () => {
+      const stack = langStackRef.current;
+      const activeEl = lang === 'id' ? idTextRef.current : enTextRef.current;
+      if (!stack || !activeEl) return;
+      gsap.set(stack, { height: activeEl.scrollHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [lang]);
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -37,7 +118,8 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
   }, []);
 
   const sloganLines = MURAL_SLOGAN.split('\n');
-  const descriptionParagraphs = MURAL_DESCRIPTION.split('\n').filter((line) => line.trim().length > 0);
+  const descriptionParagraphsID = MURAL_DESCRIPTION.split('\n').filter((line) => line.trim().length > 0);
+  const descriptionParagraphsEN = MURAL_DESCRIPTION_EN.split('\n').filter((line) => line.trim().length > 0);
   // Split on spaces so each word gets its own overflow-hidden "mask" span —
   // that's what lets the word slide up from underneath its own box rather
   // than just fading, the effect this is modelled on (grigoriak.doctor's
@@ -144,20 +226,48 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
           into the side gutters (well outside the description's own
           centered text column) instead of a corner, so the long stretch
           of paragraph text down here doesn't read as bare either. */}
-      <div className="mural-lower-decor">
+      <div className="mural-lower-decor" ref={lowerDecorRef}>
         {/* 3. Description below the caption. Split into one <p> per
             paragraph (rather than a single block with raw \n's, which
             the browser would just collapse into spaces) so the
             long-form text keeps its paragraph breaks and stays
             readable. The ref stays on the wrapper so the existing
             single ScrollTrigger still fades the whole block in as one
-            unit. */}
+            unit.
+
+            Bilingual: both language versions are stacked in the same
+            grid cell (see .mural-description-lang in global.css) so
+            the container is always sized to the taller of the two —
+            switching language crossfades in place instead of causing
+            the page to jump. Only the active language is announced to
+            screen readers. */}
         <div className="mural-description" ref={descriptionRef}>
-          {descriptionParagraphs.map((paragraph, i) => (
-            <p className="mural-description-paragraph" key={i}>
-              {paragraph}
-            </p>
-          ))}
+          <div className="mural-description-stack" ref={langStackRef}>
+            <div
+              className={`mural-description-lang${lang === 'id' ? ' is-active' : ''}`}
+              lang="id"
+              aria-hidden={lang !== 'id'}
+              ref={idTextRef}
+            >
+              {descriptionParagraphsID.map((paragraph, i) => (
+                <p className="mural-description-paragraph" key={i}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+            <div
+              className={`mural-description-lang${lang === 'en' ? ' is-active' : ''}`}
+              lang="en"
+              aria-hidden={lang !== 'en'}
+              ref={enTextRef}
+            >
+              {descriptionParagraphsEN.map((paragraph, i) => (
+                <p className="mural-description-paragraph" key={i}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Closing mark — a short "end of chapter" flourish under the
@@ -175,6 +285,48 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
           </span>
           <span className="mural-end-mark-line" />
         </div>
+      </div>
+
+      {/* Translate toggle — fixed to the bottom-right corner, only
+          visible while the narration block is actually on screen
+          (see the IntersectionObserver above). A sliding pill behind
+          "IND"/"ENG" animates between the two, and the text itself
+          crossfades via .mural-description-lang above. */}
+      <div
+        className={`lang-toggle${narrationVisible ? ' is-visible' : ''}`}
+        role="group"
+        aria-label="Pilih bahasa narasi / Narration language"
+      >
+        <span className="lang-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path
+              d="M3 12 H21 M12 3 C14.5 6 15.5 9 15.5 12 C15.5 15 14.5 18 12 21 C9.5 18 8.5 15 8.5 12 C8.5 9 9.5 6 12 3 Z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+          </svg>
+        </span>
+        <span className="lang-toggle-track">
+          <span className={`lang-toggle-thumb${lang === 'en' ? ' lang-en' : ''}`} aria-hidden="true" />
+          <button
+            type="button"
+            className={`lang-toggle-btn${lang === 'id' ? ' is-active' : ''}`}
+            onClick={() => setLang('id')}
+            aria-pressed={lang === 'id'}
+          >
+            IND
+          </button>
+          <button
+            type="button"
+            className={`lang-toggle-btn${lang === 'en' ? ' is-active' : ''}`}
+            onClick={() => setLang('en')}
+            aria-pressed={lang === 'en'}
+          >
+            ENG
+          </button>
+        </span>
       </div>
     </section>
   );

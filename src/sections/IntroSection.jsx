@@ -8,6 +8,28 @@ import {
 } from '../animations/introAnimations.js';
 import { ARTIST_NAME_PREFIX, ARTIST_NAME_SHORT, INTRO_YEAR, CTA_LABEL } from '../data/content.js';
 
+// Best-effort fullscreen request — must be called synchronously from
+// inside a real user-gesture handler (a click) or browsers silently
+// refuse it, which is why this is called first thing inside
+// handleEnterMural below, before any other work. Vendor-prefixed
+// fallbacks cover older/WebKit-based Android browsers; iOS Safari has no
+// Fullscreen API on iPhone at all (only iPadOS partially supports it), so
+// this quietly does nothing there rather than throwing — the rest of the
+// page still works normally either way.
+function requestFullscreenSafely() {
+  const el = document.documentElement;
+  const request =
+    el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (!request) return;
+  try {
+    const result = request.call(el);
+    if (result && typeof result.catch === 'function') result.catch(() => {});
+  } catch {
+    // Ignored — some browsers (notably iOS Safari) don't support this at
+    // all, and some reject if the user has fullscreen disabled by policy.
+  }
+}
+
 const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural }, ref) {
   const stageRef = useRef(null);
   const wallRef = useRef(null);
@@ -45,10 +67,11 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
       const raf2 = requestAnimationFrame(() => {
         if (cancelled) return;
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const textEls = [yearRef.current, nameRef.current, ctaRef.current];
+        const textEls = [yearRef.current, ctaRef.current];
         formationRef.current = playCardFormation({
           entranceSelector: '.card-anim',
           introTextEls: textEls,
+          nameEl: nameRef.current,
           // Makes the ring swipeable — a drag/swipe on the wall rotates
           // it (see startOrbit's pointer-drag handling in
           // introAnimations.js, which already had this wired up but was
@@ -76,6 +99,10 @@ const IntroSection = forwardRef(function IntroSection({ collapsed, onEnterMural 
   const handleEnterMural = () => {
     if (hasOpened.current) return;
     hasOpened.current = true;
+
+    // Must happen synchronously inside this click handler, first — see
+    // the function's own comment for why.
+    requestFullscreenSafely();
 
     // Stop the idle orbit before anything else touches these elements —
     // otherwise it keeps writing x/y every frame right through the

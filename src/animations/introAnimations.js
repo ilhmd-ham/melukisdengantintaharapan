@@ -95,10 +95,33 @@ function circlePoint(i, radius, spin = 0, offset = { cx: 0, cy: 0 }) {
   };
 }
 
-// A loose, centered 9-column grid — the "dealt into neat rows" waypoint
-// between the initial shuffle and the ring the cards curl into afterwards.
-function gridPoint(i, cardW, cardH) {
-  const cols = 9;
+// All whole-number divisors of 36, largest first — every option here
+// divides evenly, so however many columns end up chosen, the resulting
+// rows are always exactly full (36 / cols is always a whole number) and
+// no card is ever left sitting alone on its own row.
+const GRID_COLUMN_OPTIONS = [9, 6, 4, 3, 2, 1];
+
+// Picks the most columns that still fit comfortably within the actual
+// viewport width. Previously fixed at 9 regardless of screen size — fine
+// on desktop, but on narrow phones 9 × (card width + gap) is wider than
+// the screen, which is why the leftmost and rightmost cards clipped off
+// during this step. A small safety margin (8% of the viewport) keeps the
+// outermost cards from ever touching the very edge.
+function pickGridColumns(cardW) {
+  const vw = window.innerWidth;
+  const colGap = cardW + 16;
+  const safeWidth = vw * 0.92;
+  for (const cols of GRID_COLUMN_OPTIONS) {
+    if (cols * colGap <= safeWidth) return cols;
+  }
+  return 1;
+}
+
+// A loose, centered grid — the "dealt into neat rows" waypoint between the
+// initial shuffle and the ring the cards curl into afterwards. `cols` is
+// computed per-viewport by pickGridColumns() (see above) rather than
+// hardcoded, so this always lays out as full rows that fit on-screen.
+function gridPoint(i, cardW, cardH, cols) {
   const rows = Math.ceil(CARD_COUNT / cols);
   const col = i % cols;
   const row = Math.floor(i / cols);
@@ -146,11 +169,13 @@ function shufflePoint(i, radius) {
 // caller's own code) starts animating the same elements — most
 // importantly right before the "wall opens" fly-away transition takes
 // over.
-export function playCardFormation({ entranceSelector, introTextEls, dragEl, reduced }) {
+export function playCardFormation({ entranceSelector, introTextEls, nameEl, dragEl, reduced }) {
   const controller = { killOrbit: () => {} };
   const radius = getRadius();
   const offset = getCenterOffset(radius);
   const { w: cardW, h: cardH } = getCardBox();
+  const gridCols = pickGridColumns(cardW);
+  const mobile = isMobileViewport();
 
   if (reduced) {
     gsap.set(entranceSelector, {
@@ -161,6 +186,7 @@ export function playCardFormation({ entranceSelector, introTextEls, dragEl, redu
       scale: 1,
     });
     gsap.set(introTextEls, { opacity: 1, y: 0 });
+    if (nameEl) gsap.set(nameEl, { clipPath: 'none', opacity: 1, y: 0 });
     return controller;
   }
 
@@ -173,18 +199,32 @@ export function playCardFormation({ entranceSelector, introTextEls, dragEl, redu
   });
   gsap.set(introTextEls, { opacity: 0, y: 24 });
 
-  gsap
-    .timeline({ onComplete: () => startOrbit(entranceSelector, radius, controller, dragEl) })
-    .to(entranceSelector, {
-      x: (i) => gridPoint(i, cardW, cardH).x,
-      y: (i) => gridPoint(i, cardW, cardH).y,
-      rotation: 0,
-      opacity: 1,
-      scale: 1,
-      duration: 1,
-      ease: 'back.out(1.5)',
-      stagger: { each: 0.02, from: 'random' },
-    })
+  // Desktop: the name appears from behind a circular mask anchored at its
+  // own bottom edge, similar in spirit to the "YOUR BEAUTY" reveal on
+  // grigoriak.doctor. Mobile: a straight left-to-right wipe instead (a
+  // circular mask reads poorly on the much narrower column "RPL C" sits
+  // in there). No vertical rise on either — that's what previously made
+  // the reveal feel like a long wait; the mask growing is motion enough
+  // on its own.
+  if (nameEl) {
+    gsap.set(
+      nameEl,
+      mobile ? { clipPath: 'inset(0% 100% 0% 0%)', opacity: 1 } : { clipPath: 'circle(0% at 50% 100%)', opacity: 1 }
+    );
+  }
+
+  const tl = gsap.timeline();
+
+  tl.to(entranceSelector, {
+    x: (i) => gridPoint(i, cardW, cardH, gridCols).x,
+    y: (i) => gridPoint(i, cardW, cardH, gridCols).y,
+    rotation: 0,
+    opacity: 1,
+    scale: 1,
+    duration: 1,
+    ease: 'back.out(1.5)',
+    stagger: { each: 0.02, from: 'random' },
+  })
     // Brief hold so the "dealt into rows" beat actually reads before it
     // curls up into a circle — without this the grid flashes past too
     // fast to register as its own step.
@@ -201,12 +241,41 @@ export function playCardFormation({ entranceSelector, introTextEls, dragEl, redu
       },
       '>'
     )
-    .to(introTextEls, { opacity: 1, y: 0, duration: 0.9, stagger: 0.08 }, '-=0.7');
+    // Marks the moment the ring has actually finished arriving. Two
+    // things key off this: the name reveal (right below) starts exactly
+    // here rather than earlier — starting it while cards were still
+    // mid-flight was what made even a fast reveal read as "covered by
+    // the cards" — and the idle orbit (further below) also starts here,
+    // rather than waiting for the name reveal to finish playing out, so
+    // the cards begin drifting again right away instead of sitting still
+    // through however long the reveal takes.
+    .addLabel('settled')
+    .to(introTextEls, { opacity: 1, y: 0, duration: 0.9, stagger: 0.08 }, 'settled-=0.3')
+    .call(() => startOrbit(entranceSelector, radius, controller, dragEl), [], 'settled+=0.05');
 
-  // Last-resort safety net — see the equivalent note this replaces further
-  // down the file history: if the tween above never got to run for any
-  // reason, the text must not stay invisible forever.
-  setTimeout(() => gsap.set(introTextEls, { opacity: 1, y: 0 }), 4000);
+  // Quick — a mask that grows into place, not a slow crawl. Reads clearly
+  // because it's the only thing moving at this point (cards have already
+  // settled, per the 'settled' label above), so it doesn't need to be
+  // slow to be noticed.
+  if (nameEl) {
+    tl.to(
+      nameEl,
+      mobile
+        ? { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.5, ease: 'power2.out' }
+        : { clipPath: 'circle(140% at 50% 100%)', duration: 2.0, ease: 'power2.out' },
+      'settled+=0.05'
+    );
+  }
+
+  // Last-resort safety net — if the tweens above never got to run for any
+  // reason, the text must not stay invisible forever. 8s (not the previous
+  // 4s) because the name's own slow-motion reveal alone now runs ~3s,
+  // starting only after the ~3.5s formation sequence ahead of it — a
+  // shorter timeout here would cut that reveal short mid-play.
+  setTimeout(() => {
+    gsap.set(introTextEls, { opacity: 1, y: 0 });
+    if (nameEl) gsap.set(nameEl, { clipPath: 'none', opacity: 1, y: 0 });
+  }, 8000);
 
   return controller;
 }

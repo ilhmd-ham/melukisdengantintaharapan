@@ -146,6 +146,7 @@ export default function CardModal({ character, origin, getLiveOrigin, onClose })
       >
         <span className="card-modal-symbol">{symbol}</span>
         <span className="card-modal-name">{name}</span>
+        <span className="card-modal-aspiration">Saya ingin menjadi...</span>
       </div>
 
       <button

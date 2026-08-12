@@ -634,12 +634,158 @@ body.scroll-locked {
   color: #ffffff;
 }
 
+/* The two language blocks below still share this single grid cell (so
+   the crossfade is a pure opacity/transform swap, no reflow of the text
+   itself), but the STACK's own height is no longer "however tall the
+   grid needs to be for the taller of the two" — that always left a gap
+   under the shorter language. Instead JS measures whichever language is
+   actually active and sets that exact height as an inline style, and
+   this transition animates the stack smoothly to it whenever `lang`
+   toggles, so the toggle button (and everything below it) always sits
+   right up against the visible text with no leftover empty space. */
+.mural-description-stack {
+  display: grid;
+  /* Critical: without this, grid's default align-items:stretch forces
+     each .mural-description-lang below to stretch to fill whatever
+     height this container currently has (set inline by JS for
+     whichever language was active before). That means the NEXT time JS
+     reads a block's scrollHeight to size the container for it, it's
+     really just reading back the stretched leftover height from the
+     previous language, not the block's true content height — so the
+     stack can never shrink down to the shorter language and the gap
+     never closes. align-items: start lets each block size to its own
+     content regardless of the container's current (animating) height,
+     so scrollHeight is always accurate. */
+  align-items: start;
+  overflow: hidden;
+  transition: height 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
 .mural-description-paragraph {
   margin: 0 0 1.6em;
 }
 
 .mural-description-paragraph:last-child {
   margin-bottom: 0;
+}
+
+/* One of these renders per language (ID/EN), stacked on top of each
+   other via grid-area so only opacity/transform/filter need to change
+   to cross fade between them — no layout reflow, no height jump. */
+.mural-description-lang {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(10px);
+  filter: blur(3px);
+  pointer-events: none;
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
+}
+
+.mural-description-lang.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+/* Fixed translate toggle — bottom-right corner, shown only while the
+   narration block is in view (.is-visible toggled from JS via an
+   IntersectionObserver on .mural-lower-decor). */
+.lang-toggle {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 239, 230, 0.22);
+  background: rgba(23, 20, 15, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(14px) scale(0.94);
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lang-toggle.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.lang-toggle-icon {
+  display: flex;
+  color: var(--ochre);
+}
+
+.lang-toggle-track {
+  position: relative;
+  display: flex;
+  background: rgba(244, 239, 230, 0.08);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.lang-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 42px;
+  height: calc(100% - 6px);
+  border-radius: 999px;
+  background: var(--ochre);
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.lang-toggle-thumb.lang-en {
+  transform: translateX(42px);
+}
+
+.lang-toggle-btn {
+  position: relative;
+  z-index: 1;
+  width: 42px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 0.35s ease;
+}
+
+.lang-toggle-btn.is-active {
+  color: #17140f;
+}
+
+.lang-toggle-btn:focus-visible {
+  outline: 2px solid var(--ochre);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+@media (max-width: 900px) {
+  .lang-toggle {
+    padding: 5px 6px 5px 10px;
+    gap: 6px;
+  }
+
+  .lang-toggle-thumb,
+  .lang-toggle-btn {
+    width: 36px;
+  }
+
+  .lang-toggle-thumb.lang-en {
+    transform: translateX(36px);
+  }
 }
 
 /* Wraps the description + closing mark (see MuralSection.jsx) purely to
@@ -933,6 +1079,17 @@ body.scroll-locked {
   font-weight: 600;
   font-size: clamp(1.4rem, 5vw, 2.2rem);
   line-height: 1.15;
+}
+
+/* Shown only here, in the enlarged detail view — never on the small
+   orbiting card face itself, which stays exactly as before (symbol +
+   glyph only). */
+.card-modal-aspiration {
+  position: relative;
+  font-family: var(--font-body);
+  font-size: clamp(0.8rem, 2.4vw, 0.95rem);
+  color: var(--ink-muted);
+  margin-top: -6px;
 }
 
 .card-modal-close {
