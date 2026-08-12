@@ -33,6 +33,22 @@ export const NAMES = [
   'Nana', 'Silvia', 'Bima', 'Huda', 'Atta', 'Zhulkhaq',
 ];
 
+// The editable "cita-cita" (aspiration) list — one entry per card, same
+// order as NAMES above (line 1 = card 01, line 2 = card 02, ...). This is
+// what shows up in the enlarged detail view under the name, as
+// "Saya ingin menjadi <entry>" (see CardModal.jsx). These are just
+// placeholder/dummy values — replace each one with what that person
+// actually wants to become. Leaving fewer than 36 entries is fine, any
+// remaining cards just fall back to a generic placeholder.
+export const ASPIRATIONS = [
+  'Pengusaha', 'Programmer', 'Astronot', 'Dokter', 'Pilot', 'Guru',
+  'Arsitek', 'Chef', 'Polisi', 'Insinyur', 'Fotografer', 'Desainer',
+  'Psikolog', 'Jurnalis', 'Musisi', 'Pengacara', 'Atlet', 'Animator',
+  'Peneliti', 'Diplomat', 'Aktor', 'Penulis', 'Apoteker', 'Ilustrator',
+  'Ekonom', 'Pelaut', 'Perawat', 'Videografer', 'Wirausaha', 'Dosen',
+  'Petani', 'Akuntan', 'Pengembang Game', 'Koki Pastry', 'Sutradara', 'Peternak',
+];
+
 function pad(n) {
   return String(n).padStart(2, '0');
 }
@@ -43,6 +59,7 @@ export const characters = Array.from({ length: 36 }, (_, i) => {
     id,
     symbol: pad(id),
     name: NAMES[i] ?? `Nama ${id}`,
+    aspiration: ASPIRATIONS[i] ?? 'Orang Sukses',
     palette: PALETTES[id % PALETTES.length],
   };
 });

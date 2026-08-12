@@ -110,7 +110,7 @@ const GRID_COLUMN_OPTIONS = [9, 6, 4, 3, 2, 1];
 function pickGridColumns(cardW) {
   const vw = window.innerWidth;
   const colGap = cardW + 16;
-  const safeWidth = vw * 0.92;
+  const safeWidth = vw * 0.96;
   for (const cols of GRID_COLUMN_OPTIONS) {
     if (cols * colGap <= safeWidth) return cols;
   }
@@ -121,16 +121,61 @@ function pickGridColumns(cardW) {
 // initial shuffle and the ring the cards curl into afterwards. `cols` is
 // computed per-viewport by pickGridColumns() (see above) rather than
 // hardcoded, so this always lays out as full rows that fit on-screen.
-function gridPoint(i, cardW, cardH, cols) {
+// `scale` (see getGridScale() below) uniformly shrinks both the spacing
+// AND the cards' own rendered size (applied via the `scale:` tween in
+// playCardFormation), so tall grids (many rows) always fit within the
+// visible viewport — as large as the screen allows, never overlapping.
+function gridPoint(i, cardW, cardH, cols, scale = 1) {
   const rows = Math.ceil(CARD_COUNT / cols);
   const col = i % cols;
   const row = Math.floor(i / cols);
-  const colGap = cardW + 16;
-  const rowGap = cardH + 18;
+  const colGap = (cardW + 16) * scale;
+  const rowGap = (cardH + 18) * scale;
   return {
     x: (col - (cols - 1) / 2) * colGap,
     y: (row - (rows - 1) / 2) * rowGap,
   };
+}
+
+// pickGridColumns() only ever budgeted for the grid's WIDTH fitting the
+// screen — it picks the most columns that fit horizontally, but however
+// many columns come out of that, the resulting row count (36 / cols) was
+// never checked against the viewport's actual HEIGHT. On tall-but-narrow
+// phone screens that's exactly backwards: fewer columns (forced by a
+// narrow width) means MORE rows, and that taller grid routinely grew past
+// the top and bottom edges of .intro — which clips with overflow:hidden —
+// so the top and bottom rows of cards simply never appeared during the
+// loading sequence. Rather than fight the width/height budgets against
+// each other by changing the column count (which would just trade the
+// clipping from one axis to the other), this keeps pickGridColumns' column
+// choice as-is and instead computes a single uniform scale-down factor,
+// applied to BOTH the spacing AND the cards' own rendered size (see the
+// `scale:` tween in playCardFormation) so cards actually shrink together
+// with the gaps between them — shrinking spacing alone while leaving the
+// cards at full size is what previously made a tall grid (many rows, e.g.
+// 9×4 on a narrow phone) render as overlapping tiles instead of a tidy,
+// gapped grid. Because both axes shrink in lockstep now, there's no floor
+// needed to protect against overlap — this always fits exactly.
+function getGridScale(cols, cardW, cardH) {
+  const rows = Math.ceil(CARD_COUNT / cols);
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const colGap = cardW + 16;
+  const rowGap = cardH + 18;
+  // Cards are allowed to run almost edge-to-edge horizontally — only a
+  // thin safety margin so the outermost column never visibly clips.
+  const safeWidth = vw * 0.97;
+  // On mobile this still has to clear the year label pinned near the top
+  // of the screen and the CTA pinned near the bottom (~120px combined,
+  // see .intro-copy's padding in global.css) — that space isn't free —
+  // but otherwise fills as much of the remaining height as it can.
+  const safeHeight = isMobileViewport() ? vh * 0.82 : vh * 0.94;
+  const rawWidth = cols * colGap;
+  const rawHeight = rows * rowGap;
+  // Small floor purely so the brief "grid" beat never shrinks to an
+  // illegibly tiny flash on extreme (very short/square) viewports — not a
+  // guard against overlap, since card size and spacing now shrink together.
+  return Math.max(0.4, Math.min(1, safeWidth / rawWidth, safeHeight / rawHeight));
 }
 
 // Same seeded-random approach used elsewhere in the project, so the
@@ -175,6 +220,7 @@ export function playCardFormation({ entranceSelector, introTextEls, nameEl, drag
   const offset = getCenterOffset(radius);
   const { w: cardW, h: cardH } = getCardBox();
   const gridCols = pickGridColumns(cardW);
+  const gridScale = getGridScale(gridCols, cardW, cardH);
   const mobile = isMobileViewport();
 
   if (reduced) {
@@ -216,11 +262,16 @@ export function playCardFormation({ entranceSelector, introTextEls, nameEl, drag
   const tl = gsap.timeline();
 
   tl.to(entranceSelector, {
-    x: (i) => gridPoint(i, cardW, cardH, gridCols).x,
-    y: (i) => gridPoint(i, cardW, cardH, gridCols).y,
+    x: (i) => gridPoint(i, cardW, cardH, gridCols, gridScale).x,
+    y: (i) => gridPoint(i, cardW, cardH, gridCols, gridScale).y,
     rotation: 0,
     opacity: 1,
-    scale: 1,
+    // Cards shrink together with the grid's spacing (both driven by the
+    // same gridScale) — on a tall, narrow phone this is what keeps the
+    // full 4×9 grid inside the screen with real gaps between cards
+    // instead of full-size cards overlapping each other. Restored to 1
+    // right below as the cards curl into the ring.
+    scale: gridScale,
     duration: 1,
     ease: 'back.out(1.5)',
     stagger: { each: 0.02, from: 'random' },
@@ -235,6 +286,7 @@ export function playCardFormation({ entranceSelector, introTextEls, nameEl, drag
         x: (i) => circlePoint(i, radius, 0, offset).x,
         y: (i) => circlePoint(i, radius, 0, offset).y,
         rotation: (i) => circlePoint(i, radius, 0, offset).rotation,
+        scale: 1,
         duration: 1.2,
         ease: 'power3.inOut',
         stagger: { each: 0.014, from: 'center' },

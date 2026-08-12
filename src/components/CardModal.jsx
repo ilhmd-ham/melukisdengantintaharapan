@@ -5,36 +5,6 @@ import gsap from 'gsap';
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// Enlarged view of a single card, shown centered over the whole screen
-// when a card in the grid is clicked/tapped. Rendered via a portal to
-// document.body so it always sits above everything else — including the
-// intro wall's own `perspective`, which would otherwise turn a plain
-// `position: fixed` here into something scoped to `.card-grid` instead of
-// the real viewport (perspective establishes a containing block for
-// fixed-position descendants, same as transform does).
-//
-// The open/close transitions are a manual FLIP (First-Last-Invert-Play):
-// this card is always laid out at its natural resting spot (centered,
-// full modal size) via CSS — GSAP never touches layout, only an inverted
-// transform on top of it. On open, `origin` (captured by CharacterGrid at
-// the moment of click — see measureCard()) gives the real card's exact
-// on-screen position/size; we invert the modal into that exact spot with
-// a transform, then animate the transform back to identity, so it
-// visually "arrives" from wherever the clicked card actually was. On
-// close we do the same in reverse, except the target has to be
-// RE-measured at that exact moment (via getLiveOrigin) rather than reused
-// from open time, because the ring never stops orbiting — the card has
-// moved on since it was clicked.
-//
-// Deliberately position/scale only — no rotation. The ring's rotation
-// value climbs continuously and unboundedly the longer the page has been
-// open (it's just elapsed-time × angular speed, never wrapped back into
-// 0-360), so animating "from" or "to" that raw number span hundreds or
-// thousands of degrees of ACTUAL spinning rather than the short turn it
-// looks like at a glance — that's what caused the card to visibly whirl
-// around instead of just sliding in. Simplest reliable fix: the modal
-// card never rotates at all, so there's nothing to wrap or spin — it
-// always reads as a straight pull from one side, never a flip.
 export default function CardModal({ character, origin, getLiveOrigin, onClose }) {
   const cardRef = useRef(null);
   const closingRef = useRef(false);
@@ -122,7 +92,7 @@ export default function CardModal({ character, origin, getLiveOrigin, onClose })
 
   if (!character) return null;
 
-  const { symbol, name, palette } = character;
+  const { symbol, name, aspiration, palette } = character;
 
   return createPortal(
     <div
@@ -146,7 +116,9 @@ export default function CardModal({ character, origin, getLiveOrigin, onClose })
       >
         <span className="card-modal-symbol">{symbol}</span>
         <span className="card-modal-name">{name}</span>
-        <span className="card-modal-aspiration">Saya ingin menjadi...</span>
+        <span className="card-modal-aspiration">
+          Saya ingin menjadi {aspiration ?? '...'}
+        </span>
       </div>
 
       <button
