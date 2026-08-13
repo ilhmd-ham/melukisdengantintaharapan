@@ -137,8 +137,16 @@ body.scroll-locked {
 .card-grid {
   position: absolute;
   inset: 0;
-  perspective: 1400px;
-  -webkit-perspective: 1400px;
+  /* perspective/preserve-3d intentionally removed from this whole chain
+     (.card-grid / .card-slot / .card-anim below) — the card flip that
+     originally needed a 3D context is disabled (see .card / CharacterCard.jsx:
+     "Flip is disabled — this is now a plain, static face"), and nothing here
+     uses rotateX/rotateY anymore, only plain 2D x/y/rotation. Keeping a live
+     3D rendering context around 36 continuously-orbiting cards forces the
+     browser into much costlier 3D compositing math every single frame for a
+     visual effect that no longer exists — this was the main cause of the
+     ring feeling heavy/laggy. Dropping it is a pure performance win with no
+     visual or animation change. */
 }
 
 /* A plain, never-transformed anchor at the exact center of the stage.
@@ -157,8 +165,6 @@ body.scroll-locked {
   height: var(--card-h);
   margin-top: calc(var(--card-h) / -2);
   margin-left: calc(var(--card-w) / -2);
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
 }
 
 /* Hides the real orbiting card while its enlarged view is open in
@@ -173,16 +179,19 @@ body.scroll-locked {
 
 /* Purely an entrance-animation target (opacity/scale/y from GSAP) — kept
    separate from .card-slot's positioning transform and .card's flip
-   transform so none of the three fight each other. */
+   transform so none of the three fight each other.
+   will-change: transform promotes each of the 36 cards to its own cheap
+   GPU compositor layer up front, so GSAP's per-frame x/y/rotation writes
+   (see startOrbit in introAnimations.js) skip layout/paint entirely and
+   only move an already-rasterized layer — this is what keeps the
+   continuous orbit smooth instead of forcing a full repaint of every card
+   on every frame. */
 .card-anim {
   display: block;
   width: var(--card-w);
   height: var(--card-h);
   opacity: 0;
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
-  perspective: 1400px;
-  -webkit-perspective: 1400px;
+  will-change: transform;
 }
 
 /* Flip is disabled — this is now a plain, static face: number + name
