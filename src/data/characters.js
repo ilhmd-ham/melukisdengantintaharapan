@@ -41,12 +41,12 @@ export const NAMES = [
 // actually wants to become. Leaving fewer than 36 entries is fine, any
 // remaining cards just fall back to a generic placeholder.
 export const ASPIRATIONS = [
-  'Pengusaha', 'Programmer', 'Astronot', 'Dokter', 'Pilot', 'Guru',
-  'Arsitek', 'Chef', 'Polisi', 'Insinyur', 'Fotografer', 'Desainer',
-  'Psikolog', 'Jurnalis', 'Musisi', 'Pengacara', 'Atlet', 'Animator',
-  'Peneliti', 'Diplomat', 'Aktor', 'Penulis', 'Apoteker', 'Ilustrator',
-  'Ekonom', 'Pelaut', 'Perawat', 'Videografer', 'Wirausaha', 'Dosen',
-  'Petani', 'Akuntan', 'Pengembang Game', 'Koki Pastry', 'Sutradara', 'Peternak',
+  'Pengusaha', 'Perawat', 'Pengusaha', '..?', 'Dosen', 'Pengusaha',
+  'CEO Rental PS', 'Guru', 'Programmer', 'UI/UX Designer', 'Pengusaha', 'Pengusaha',
+  'Pengusaha', 'Pengusaha', 'CEO', 'PNS', 'Lawyer', 'Guru',
+  'Guru', 'Programmer', 'Wirausahawan', 'Pelayaran (MSC)', 'Admin Perkantoran', 'Pengusaha',
+  'Pengusaha', 'Guru', 'Pengusaha', 'Pembisnis', 'Dokter', 'Pengusaha',
+  'Pengusaha', 'Trader Saham', 'Pengusaha Sukses', 'Pengusaha', 'Pebisnis, Trader XAU', 'Pembisnis Internasional',
 ];
 
 function pad(n) {

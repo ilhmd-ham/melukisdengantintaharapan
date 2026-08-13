@@ -2,7 +2,7 @@ export const ARTIST_NAME_PREFIX = 'XII';
 export const ARTIST_NAME_SHORT = 'RPL C';
 export const ARTIST_NAME = `${ARTIST_NAME_PREFIX} ${ARTIST_NAME_SHORT}`;
 
-export const INTRO_YEAR = '2024 / 2025';
+export const INTRO_YEAR = 'Sentuh kartu, temukan mimpi kami';
 
 export const INTRO_TAGLINE = 'Melukis dengan Tinta Harapan';
 
