@@ -3,15 +3,19 @@ export default function CharacterCard({ character, isLifted, onSelect, registerR
 
   // Cards sit on a closed ring (see animations/introAnimations.js), each
   // meant to overlap its clockwise neighbor — one edge tucked under, the
-  // other edge on top. Plain ascending z-index (1, 2, 3 … 36) gives that
-  // consistently for every card EXCEPT right where the sequence wraps
-  // back to the start: something there has to sit in front of both its
+  // other edge on top. Walking the ring in ascending z-index gives that
+  // consistently for every card EXCEPT right where the walk wraps back
+  // to its own start: something there has to sit in front of both its
   // neighbors, and something else has to sit behind both of its
   // neighbors. That seam can't be removed, only placed somewhere — so
-  // card 36 is sacrificed as the one tucked fully under both its
-  // neighbors (35 and 01), keeping every other card correctly "one side
-  // under, one side over".
-  const zIndex = id === 36 ? 0 : id;
+  // one card is sacrificed as the one tucked fully under both its
+  // neighbors. SACRIFICED_ID controls which card that is; the walk is
+  // just re-started right after it (START_ID) so the seam lands exactly
+  // on either side of that one card instead of at the fixed 36→01 wrap.
+  const SACRIFICED_ID = 4;
+  const START_ID = (SACRIFICED_ID % 36) + 1;
+  const zIndex =
+    id === SACRIFICED_ID ? 0 : ((id - START_ID + 36) % 36) + 1;
 
   const handleActivate = () => onSelect?.(character);
   const handleKeyDown = (e) => {
