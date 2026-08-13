@@ -32,6 +32,7 @@ export function setupMuralScroll({
   imageWrapEl,
   imageEl,
   heroTitleEl,
+  heroClassEl,
   imageCaptionEl,
   descriptionEl,
   reduced,
@@ -51,7 +52,8 @@ export function setupMuralScroll({
     gsap.set(imageWrapEl, { opacity: 1, y: '0%', clipPath: 'inset(0% 0% 0% 0%)' });
     gsap.set(descriptionEl, { opacity: 1, y: 0 });
     gsap.set([heroWords, captionWords], { yPercent: 0, opacity: 1 });
-    return triggers;
+    if (heroClassEl) gsap.set(heroClassEl, { opacity: 1, y: 0 });
+    return { triggers, playHeroTitle: () => {} };
   }
 
   // On mobile the reveal previously started translated 55% below its own
@@ -97,6 +99,7 @@ export function setupMuralScroll({
   gsap.set(imageEl, { scale: 1.12 });
   gsap.set([heroWords, captionWords], { yPercent: 120, opacity: 0 });
   gsap.set(descriptionEl, { opacity: 0, y: 40 });
+  if (heroClassEl) gsap.set(heroClassEl, { opacity: 0, y: 22 });
 
   // Reveal is now split into two INDEPENDENT pieces instead of one combined
   // scrubbed timeline. That split is the actual fix for two reported bugs
@@ -251,12 +254,26 @@ export function setupMuralScroll({
   // leaveBack, and "play"/"reverse" again on re-entering either
   // direction — so there's no separate boolean that can drift out of
   // sync with what's actually on screen.
+  let heroTl = null;
   if (heroWords.length) {
-    gsap.timeline({
+    heroTl = gsap.timeline({
+      paused: true,
       scrollTrigger: {
         trigger: heroTitleEl,
         start: 'top 90%',
-        toggleActions: 'play reverse play reverse',
+        // Was 'play reverse play reverse' — with 'play' as the first
+        // (onEnter) action, this fired itself the instant it was created
+        // if the trigger element already happened to be in view (which
+        // it always was here — this section is the very first thing on
+        // screen once the intro collapses), so the reveal finished
+        // playing out several seconds before the loader curtain (a much
+        // longer sequence) had even finished, hidden the whole time.
+        // 'none' as the first slot means creating/refreshing this while
+        // already in view does nothing — playHeroTitle() below is the
+        // only thing that starts it now. The other three slots (leave/
+        // enterBack/leaveBack) are untouched, so scrolling the title out
+        // of view and back still reverses/replays it normally.
+        toggleActions: 'none reverse play reverse',
       },
     }).to(heroWords, {
       yPercent: 0,
@@ -265,7 +282,17 @@ export function setupMuralScroll({
       ease: 'power3.out',
       stagger: 0.16,
     });
+
+    if (heroClassEl) {
+      heroTl.to(
+        heroClassEl,
+        { opacity: 1, y: 0, duration: 1, ease: 'power2.out' },
+        '-=1.1'
+      );
+    }
+
+    triggers.push(heroTl.scrollTrigger);
   }
 
-  return triggers;
+  return { triggers, playHeroTitle: () => heroTl?.play(0) };
 }

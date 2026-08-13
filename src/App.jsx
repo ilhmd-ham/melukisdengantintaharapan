@@ -112,8 +112,16 @@ function AppInner() {
   // Called once the "wall opens" transition has finished playing. Collapses
   // the intro out of the document flow (so there is nothing to scroll back
   // up into), then re-measures Lenis + ScrollTrigger against the new,
-  // shorter document before unlocking — otherwise the mural's scroll-linked
-  // reveal computes against stale (pre-collapse) positions and gets stuck.
+  // shorter document — otherwise the mural's scroll-linked reveal computes
+  // against stale (pre-collapse) positions and gets stuck.
+  //
+  // Scrolling itself, though, stays locked a little longer: collapsing the
+  // intro is also the exact moment the mural section's code-typing loader
+  // (see CodeTitleLoader / MuralSection) starts playing, and the person
+  // shouldn't be able to scroll past that "loading" curtain before it's
+  // actually finished. So `unlocked` is NOT set here — only
+  // handleMuralReady, fired by the loader's onComplete once the title has
+  // been "printed" and the curtain has faded away, does that.
   const handleEnterMural = () => {
     setIntroCollapsed(true);
 
@@ -130,16 +138,20 @@ function AppInner() {
         } else {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-        setUnlocked(true);
       });
     });
   };
+
+  // Fired by CodeTitleLoader (via MuralSection) once its typing/run/print
+  // sequence has finished and the overlay has faded out — only then is
+  // there anything worth scrolling to, so only then does the page unlock.
+  const handleMuralReady = () => setUnlocked(true);
 
   return (
     <main>
       <ScrollProgress />
       <IntroSection ref={introRef} collapsed={introCollapsed} onEnterMural={handleEnterMural} />
-      <MuralSection ref={muralRef} />
+      <MuralSection ref={muralRef} loaderActive={introCollapsed} onLoaderComplete={handleMuralReady} />
     </main>
   );
 }

@@ -2,21 +2,25 @@ import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap';
 import { setupMuralScroll } from '../animations/muralAnimations.js';
 import { useScrollTo } from '../components/SmoothScroll.jsx';
+import CodeTitleLoader from '../components/CodeTitleLoader.jsx';
 import {
   MURAL_IMAGE,
   MURAL_IMAGE_ALT,
   MURAL_SLOGAN,
   MURAL_DESCRIPTION,
   MURAL_DESCRIPTION_EN,
+  MURAL_CLASS_LABEL,
   INTRO_TAGLINE,
 } from '../data/content.js';
 
-const MuralSection = forwardRef(function MuralSection(_props, ref) {
+const MuralSection = forwardRef(function MuralSection({ loaderActive, onLoaderComplete }, ref) {
   const backdropRef = useRef(null);
   const frameRef = useRef(null);
   const imageWrapRef = useRef(null);
   const imageRef = useRef(null);
   const heroTitleRef = useRef(null);
+  const heroClassRef = useRef(null);
+  const terminalStatusRef = useRef(null);
   const imageCaptionRef = useRef(null);
   const descriptionRef = useRef(null);
   const lowerDecorRef = useRef(null);
@@ -100,22 +104,59 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
     return () => window.removeEventListener('resize', handleResize);
   }, [lang]);
 
+  const playHeroTitleRef = useRef(() => {});
+
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const triggers = setupMuralScroll({
+    const { triggers, playHeroTitle } = setupMuralScroll({
       sectionEl: ref.current,
       backdropEl: backdropRef.current,
       frameEl: frameRef.current,
       imageWrapEl: imageWrapRef.current,
       imageEl: imageRef.current,
       heroTitleEl: heroTitleRef.current,
+      heroClassEl: heroClassRef.current,
       imageCaptionEl: imageCaptionRef.current,
       descriptionEl: descriptionRef.current,
       reduced,
     });
+    playHeroTitleRef.current = playHeroTitle;
     return () => triggers.forEach((t) => t.kill());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Passed to CodeTitleLoader below instead of onLoaderComplete directly —
+  // this way the hero title's "rise up from below" reveal (see
+  // playHeroTitle / setupMuralScroll in muralAnimations.js) plays exactly
+  // when the loader's curtain clears, rather than having already played
+  // out silently underneath it.
+  const handleLoaderComplete = () => {
+    playHeroTitleRef.current?.();
+    onLoaderComplete?.();
+  };
+
+  // Fired by CodeTitleLoader the instant its checkmark pops — i.e. the
+  // moment "python judul.py" visibly succeeds — rather than waiting for
+  // the curtain to finish fading out. Reveals the persistent top-left
+  // status line below and then leaves it showing; unlike the loader
+  // curtain itself (which unmounts once done), this element lives here
+  // in MuralSection so it stays on screen for as long as the reader is
+  // on this title screen, per "tetap ada di halaman judul ... tertampil
+  // terus abis berhasil".
+  const handleRunSucceeded = () => {
+    const el = terminalStatusRef.current;
+    if (!el) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      gsap.set(el, { opacity: 1, y: 0 });
+      return;
+    }
+    gsap.fromTo(
+      el,
+      { opacity: 0, y: -8 },
+      { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+    );
+  };
 
   const sloganLines = MURAL_SLOGAN.split('\n');
   const descriptionParagraphsID = MURAL_DESCRIPTION.split('\n').filter((line) => line.trim().length > 0);
@@ -134,6 +175,21 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
 
   return (
     <section className="mural" ref={ref} aria-label="Karya mural">
+      {/* Plays once, the instant this section becomes the thing on screen
+          (see the `loaderActive` prop, driven from App.jsx) — a "loading"
+          curtain that types out a short snippet, runs it, and prints the
+          headline below as its output, before revealing this section
+          (whose own hero-title reveal has already quietly played out
+          underneath while the curtain was up). Scroll stays locked in
+          App.jsx until onLoaderComplete fires. */}
+      <CodeTitleLoader
+        active={loaderActive}
+        titleText={INTRO_TAGLINE}
+        classText={MURAL_CLASS_LABEL}
+        onComplete={handleLoaderComplete}
+        onRunSucceeded={handleRunSucceeded}
+      />
+
       <div className="mural-backdrop" ref={backdropRef} aria-hidden="true" />
 
       {/* 1. Full-screen title — just the short headline now, each word
@@ -151,6 +207,22 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
           <span className="mural-hero-ring mural-hero-ring--3" />
         </div>
 
+        {/* Plain terminal-style status line, no card behind it — starts
+            invisible (opacity: 0 in CSS) and is revealed by
+            handleRunSucceeded above the instant the loader's run
+            succeeds, then just stays visible on this title screen from
+            then on. */}
+        <div className="mural-hero-terminal-status" ref={terminalStatusRef} aria-hidden="true">
+          <span className="mural-hero-terminal-status-cmd">
+            <span className="cl-prompt-sym">$</span>python judul.py
+          </span>
+          <span className="mural-hero-terminal-status-result">
+            <span className="mural-hero-terminal-status-check">✓</span>
+            Program berhasil dijalankan:
+            <span className="cl-caret cl-caret--corner">▍</span>
+          </span>
+        </div>
+
         <h2 className="mural-hero-title" ref={heroTitleRef}>
           {heroTitleWords.map((word, i) => (
             <span className="mural-hero-title-mask" key={i}>
@@ -158,6 +230,10 @@ const MuralSection = forwardRef(function MuralSection(_props, ref) {
             </span>
           ))}
         </h2>
+
+        <p className="mural-hero-class" ref={heroClassRef}>
+          {MURAL_CLASS_LABEL}
+        </p>
 
         {/* Pinned to the bottom of this full-screen title, hinting that
             there's more below — this section is free-scroll (no

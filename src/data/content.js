@@ -6,6 +6,11 @@ export const INTRO_YEAR = '2024 / 2025';
 
 export const INTRO_TAGLINE = 'Melukis dengan Tinta Harapan';
 
+// Shown under the full-screen hero title in the mural section, and also
+// "typed" alongside the title itself in the CodeTitleLoader sequence — see
+// MuralSection.jsx and CodeTitleLoader.jsx.
+export const MURAL_CLASS_LABEL = 'Kelas XII RPL C';
+
 export const CTA_LABEL = 'LIHAT PESAN MURAL';
 
 export const MURAL_IMAGE = '/images/mural.jpeg';
